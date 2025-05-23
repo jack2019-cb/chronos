@@ -1,24 +1,35 @@
 # Next Steps for ChronosCraft AI
 
-## Where You Left Off (2025-05-23)
+## Recent Progress (as of 2025-05-23)
 
-- Project structure and documentation are in place
-- Ready to bootstrap frontend and backend apps
+- Cleaned up and standardized the `client/` directory structure for Next.js best practices
+- Added a sample smoke test to `client/__tests__/` to verify frontend test setup
+- Bootstrapped backend (`server/`) with Express, Mocha, and a working test suite
+- Added TypeScript configuration (`tsconfig.json`) to backend for future migration
+- Implemented `/calendar` API endpoint in backend and verified with automated tests
+- All backend and frontend smoke/API tests are passing
 
-## Recommended Next Steps
+## Next Steps
 
-1. Initialize Next.js app with TypeScript in `client/`
-2. Initialize Node.js/Express app with TypeScript in `server/`
-3. Set up npm workspaces in the root for `client/`, `server/`, and `shared/`
-4. Add and configure ESLint, Prettier, and testing tools in both apps
-5. Set up Prisma in `server/` and connect to PostgreSQL
+### Frontend (client/)
+- Add/expand automated tests for UI components and hooks in `__tests__/`
+- Begin implementing core calendar creation UI (select year/month, event input, etc.)
+- Set up API integration with backend endpoints (e.g., `/calendar`)
+- Add Prettier and ESLint config if custom rules are needed
+- Start building GenAI prompt UI and output preview
 
-## Quick Start for Next Session
+### Backend (server/)
+- Gradually migrate backend code to TypeScript (rename files, update imports/exports)
+- Expand API endpoints: calendar data, event CRUD, PDF/PNG export, project save/load
+- Add database integration (e.g., PostgreSQL with Prisma or another ORM)
+- Implement authentication and user/project persistence
+- Add/expand backend tests for new endpoints and business logic
 
-- Pull the latest changes: `git pull`
-- Review `MVP_CHECKLIST.md` for implementation goals
-- Begin bootstrapping frontend and backend as above
+### General
+- Keep documentation up to date as features are added
+- Review and update MVP checklist and roadmap as milestones are reached
+- Ensure all code passes linting and tests before merging to `dev`
 
 ---
 
-_You are ready to move forward with the MVP implementation of ChronosCraft AI!_
+_You are ready to continue building out ChronosCraft AI!_
