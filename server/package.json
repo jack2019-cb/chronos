@@ -1,0 +1,15 @@
+{
+  "devDependencies": {
+    "mocha": "^11.4.0",
+    "supertest": "^7.1.1"
+  },
+  "scripts": {
+    "test": "mocha __tests__/*.js"
+  },
+  "dependencies": {
+    "cookie-parser": "^1.4.7",
+    "debug": "^4.4.1",
+    "express": "^5.1.0",
+    "morgan": "^1.10.0"
+  }
+}
