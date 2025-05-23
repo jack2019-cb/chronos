@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  # The application service - VS Code attaches here
+  app:
+    # Builds the image based on instructions in devcontainer.json (features, etc.)
+    # The 'build' context points to the parent directory where .devcontainer is located
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+    volumes:
+      # Mount the entire repository root into /chronos
+      - ../:/chronos:cached
+    command: sleep infinity # Keep the container running indefinitely
+    environment:
+      # Pass environment variables from devcontainer.json/Codespace Secrets
+      # These will be accessible within the 'app' container
+      - DATABASE_URL=${DATABASE_URL} # Example from devcontainer.json's remoteEnv
+      # - IMAGE_GEN_API_KEY=${IMAGE_GEN_API_KEY}
+      # - LLM_API_KEY=${LLM_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    # Make the 'db' service available to the 'app' service
+    depends_on:
+      - db
+
+  # The PostgreSQL database service
+  db:
+    image: postgres:15 # Use a specific PostgreSQL version (e.g., 15)
+    restart: unless-stopped
+    volumes:
+      # Persist database data across Codespace rebuilds/restarts
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      # --- IMPORTANT: Use GitHub Codespace Secrets for these values ---
+      # These should match the credentials used in the DATABASE_URL in devcontainer.json
+      POSTGRES_DB: $${localEnv:POSTGRES_DB:-chronocraft} # Default 'chronocraft' if secret not set
+      POSTGRES_USER: $${localEnv:POSTGRES_USER:-vscode} # Default 'vscode' if secret not set
+      POSTGRES_PASSWORD: $${localEnv:POSTGRES_PASSWORD:-password} # Default 'password' if secret not set
+    ports:
+      # Map port 5432 inside the container to 5432 on the Codespace host (optional, for external tools)
+      - "5432:5432"
+
+# Define the named volume for data persistence
+volumes:
+  postgres_data:
