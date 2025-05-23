@@ -2,12 +2,9 @@
 
 > **Directory Structure**
 >
-> - `__tests__` – Tests for all critical logic
-> - `app/` – Next.js app directory (pages, layouts, etc.)
-> - `components/` – Reusable UI components
-> - `hooks/` – Custom React hooks
-> - `lib/` – Utility libraries and helpers
-> - `styles/` – Global and modular styles
+> - `src/app/` – Next.js app directory (pages, layouts, etc.)
+> - `public/` – Static assets (images, icons, etc.)
+> - `package.json`, `tsconfig.json`, `next.config.ts` – Project configuration files
 
 ## Vision & Vibe
 
