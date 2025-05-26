@@ -2,19 +2,21 @@
 
 ## Bootstrapping & Dependency Management
 
+> **Note:** The development environment uses a dev container with Node.js, npm, and ESLint pre-installed. Manual installation of these tools is not required. Focus on configuration and project-specific setup.
+
 ### Frontend
 
-- [ ] Initialize Next.js app with TypeScript in `client/`
-- [ ] Add Tailwind CSS or styled-components for styling
-- [ ] Set up ESLint, Prettier, Jest, and React Testing Library
-- [ ] Use environment variables for API endpoints and keys
+- [x] Initialize Next.js app with TypeScript in `client/`
+- [x] Add Tailwind CSS or styled-components for styling
+- [x] Set up ESLint, Prettier, Jest, and React Testing Library (ESLint is already available via dev container)
+- [x] Use environment variables for API endpoints and keys
 
 ### Backend
 
 - [ ] Initialize Node.js/Express app with TypeScript in `server/`
 - [ ] Add Prisma ORM for PostgreSQL
 - [ ] Use dotenv for local config, environment variables in devcontainer
-- [ ] Set up Jest, Supertest, and ESLint
+- [ ] Set up Jest, Supertest, and ESLint (ESLint is already available via dev container)
 
 ### Shared Code
 
@@ -64,3 +66,43 @@ _Check off each item as you complete it to track MVP progress!_
 - Maintenance & Polish: Ongoing
 
 **Total Estimate:** ~10–12 working days for a basic MVP (single developer, focused effort).
+
+# ChronosCraft AI MVP Checklist
+
+## Core Functionality
+
+- [x] Clean and standardized Next.js client directory structure
+- [x] Frontend test infrastructure set up (Jest, Testing Library, SWC, TypeScript config)
+- [x] All frontend tests in `client/__tests__/` passing as of 2025-05-25
+- [x] Sample smoke test in `client/__tests__/` verifies frontend test setup
+- [x] Backend bootstrapped with Express, Mocha, and working test suite
+- [x] `/calendar` API endpoint implemented and tested
+- [ ] Core calendar creation UI (select year/month, event input, etc.)
+- [ ] API integration with backend endpoints
+- [ ] GenAI prompt UI and output preview
+
+## Developer Experience
+
+- [x] Dev container with Node.js, npm, and ESLint pre-installed
+- [x] TypeScript configuration for both frontend and backend
+- [x] All code passes linting and tests before merging to `dev`
+- [x] Removed Babel in favor of SWC for better performance
+- [x] Jest and testing infrastructure properly configured
+
+## Backend
+
+- [ ] Gradual migration to TypeScript
+- [ ] Expand API endpoints: calendar data, event CRUD, PDF/PNG export, project save/load
+- [ ] Database integration (PostgreSQL with Prisma)
+- [ ] Authentication and user/project persistence
+- [ ] Add/expand backend tests for new endpoints and business logic
+
+## Documentation
+
+- [x] NEXT_STEPS.md up to date as of 2025-05-24
+- [ ] Documentation updated as features are added
+- [ ] Roadmap and checklist reviewed/updated as milestones are reached
+
+---
+
+_Keep this checklist updated as you progress!_

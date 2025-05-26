@@ -1,5 +1,9 @@
 # ChronosCraft AI – Client (Frontend)
 
+> **Babel Notice (May 2025):**
+>
+> The custom Babel configuration (`babel.config.js`) was removed to restore compatibility with Next.js 15+ and SWC-based features. No custom Babel plugins or transforms were in use. See `client/BABEL_REMOVAL.md` for details.
+
 > **Directory Structure**
 >
 > - `src/app/` – Next.js app directory (pages, layouts, etc.)
@@ -113,3 +117,26 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Testing
+
+The project uses Jest and React Testing Library for testing. The test setup includes:
+
+- SWC-based transformation for TypeScript and JSX
+- Proper mocking of Next.js components and features
+- Jest DOM matchers for component testing
+
+### Running Tests
+
+```bash
+npm test           # Run all tests
+npm test -- --watch # Run tests in watch mode
+```
+
+### Test Files Location
+
+- `__tests__/` - Contains all test files
+- `jest.setup.ts` - Test environment configuration
+- `jest.config.js` - Jest configuration
+
+For more details about the testing setup and recent changes, see `BABEL_REMOVAL.md`.

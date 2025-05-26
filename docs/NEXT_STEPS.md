@@ -1,34 +1,40 @@
 # Next Steps for ChronosCraft AI
 
-## Recent Progress (as of 2025-05-23)
+## Recent Progress (as of 2025-05-25)
 
 - Cleaned up and standardized the `client/` directory structure for Next.js best practices
 - Added a sample smoke test to `client/__tests__/` to verify frontend test setup
-- Bootstrapped backend (`server/`) with Express, Mocha, and a working test suite
-- Added TypeScript configuration (`tsconfig.json`) to backend for future migration
-- Implemented `/calendar` API endpoint in backend and verified with automated tests
-- All backend and frontend smoke/API tests are passing
+- Successfully fixed all frontend test failures (5 tests across 3 suites now passing)
+- Removed Babel configuration in favor of SWC transformation
+- Added proper Next.js mocks in `jest.setup.ts`
+- Updated Next.js configuration for proper test environment
+- Created comprehensive documentation of Babel removal in `BABEL_REMOVAL.md`
+- All backend and frontend tests are now passing
+- The development environment is managed by a dev container with pre-installed tools
 
-## Next Steps
+## Immediate Priority
 
 ### Frontend (client/)
-- Add/expand automated tests for UI components and hooks in `__tests__/`
-- Begin implementing core calendar creation UI (select year/month, event input, etc.)
-- Set up API integration with backend endpoints (e.g., `/calendar`)
-- Add Prettier and ESLint config if custom rules are needed
-- Start building GenAI prompt UI and output preview
+
+- [ ] Begin implementing core calendar creation UI (select year/month, event input, etc.)
+- [ ] Set up API integration with backend endpoints (e.g., `/calendar`)
+- [ ] Start building GenAI prompt UI and output preview
+- [ ] Verify frontend UI accessibility in Codespaces environment
 
 ### Backend (server/)
+
 - Gradually migrate backend code to TypeScript (rename files, update imports/exports)
 - Expand API endpoints: calendar data, event CRUD, PDF/PNG export, project save/load
-- Add database integration (e.g., PostgreSQL with Prisma or another ORM)
+- Add database integration (PostgreSQL with Prisma)
 - Implement authentication and user/project persistence
 - Add/expand backend tests for new endpoints and business logic
 
 ### General
+
 - Keep documentation up to date as features are added
 - Review and update MVP checklist and roadmap as milestones are reached
 - Ensure all code passes linting and tests before merging to `dev`
+- Note: The dev container ensures a consistent environment for all contributors, so onboarding and setup are simplified. Focus on configuration and feature development rather than tool installation.
 
 ---
 
