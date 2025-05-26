@@ -101,10 +101,35 @@
    ```
 
 #### F. Access Instructions
+
 1. Start server with host flag: `npm run dev -- -H 0.0.0.0`
 2. Ensure port 3000 is public in Codespaces
 3. Access via Codespaces URL (e.g., sturdy-xylophone-4j64wwj64g95hjwwx-3000.app.github.dev)
 
 For detailed configuration notes, see:
+
 - `client/next.config.ts`
 - `client/BABEL_REMOVAL.md`
+
+## Calendar API Implementation Status (2025-05-26)
+
+### 1. Current Implementation:
+
+- Basic GET endpoint returning months array
+- Frontend components for calendar display
+- Basic test coverage
+
+### 2. Pending Implementation:
+
+- Full CRUD operations for calendar events
+- Data models and persistence
+- Integration with external calendar services
+- PDF export functionality
+- Project save/load functionality
+- GenAI integration for themes/styling
+
+### 3. Technical Debt:
+
+- Need to expand test coverage
+- API documentation needed
+- TypeScript migration for backend endpoints

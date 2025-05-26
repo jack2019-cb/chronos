@@ -23,11 +23,18 @@
 
 ### Backend (server/)
 
-- Gradually migrate backend code to TypeScript (rename files, update imports/exports)
-- Expand API endpoints: calendar data, event CRUD, PDF/PNG export, project save/load
-- Add database integration (PostgreSQL with Prisma)
-- Implement authentication and user/project persistence
-- Add/expand backend tests for new endpoints and business logic
+- Complete calendar API implementation:
+  - [ ] Define proper data models for calendar events
+  - [ ] Implement CRUD operations for events
+  - [ ] Add PDF export endpoint
+  - [ ] Integrate with external calendar services
+  - [ ] Add project save/load functionality
+  - [ ] Implement GenAI integration for themes
+- [ ] Complete TypeScript migration
+- [ ] Add comprehensive API documentation
+- [ ] Expand test coverage
+- [ ] Add database integration (PostgreSQL with Prisma)
+- [ ] Implement authentication and user/project persistence
 
 ### General
 
