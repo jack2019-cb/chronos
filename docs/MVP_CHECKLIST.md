@@ -13,10 +13,10 @@
 
 ### Backend
 
-- [ ] Initialize Node.js/Express app with TypeScript in `server/`
+- [✓] Initialize Node.js/Express app with TypeScript in `server/`
 - [ ] Add Prisma ORM for PostgreSQL
 - [ ] Use dotenv for local config, environment variables in devcontainer
-- [ ] Set up Jest, Supertest, and ESLint (ESLint is already available via dev container)
+- [✓] Set up Jest, Supertest, and ESLint with full test coverage
 
 ### Shared Code
 
@@ -28,15 +28,23 @@
 
 ### Phase 1: Foundation
 
-- [ ] Bootstrap both apps with minimal code (hello world endpoints/pages)
+- [✓] Bootstrap both apps with minimal code (hello world endpoints/pages)
 - [ ] Set up database connection and migrations (Prisma)
-- [ ] Implement basic calendar data models and endpoints
+- [✓] Implement basic calendar data models and endpoints
+  - [✓] Full CRUD operations
+  - [✓] Error handling
+  - [✓] Type definitions
+  - [ ] Database persistence
 - [ ] Set up PDF export (basic version)
 - [ ] Set up GenAI API integration (stub/mock if needed)
 
 ### Phase 2: Core Features
 
 - [ ] Build frontend UI for calendar creation and export
+  - [✓] Basic calendar grid component
+  - [✓] Calendar creator component
+  - [ ] API integration
+  - [ ] Event management UI
 - [ ] Implement GenAI-powered image/theme generation
 - [ ] Add project save/load functionality
 - [ ] Add user authentication (if needed for MVP)
@@ -49,7 +57,10 @@
 
 ### Phase 4: Polish & Launch
 
-- [ ] Polish, optimize, and prepare for public launch
+- [ ] User testing and feedback
+- [ ] Performance optimization
+- [ ] Documentation
+- [ ] Deployment preparation
 
 ---
 

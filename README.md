@@ -19,6 +19,13 @@ ChronosCraft AI is a web application where users co-create beautiful, personaliz
 
 For detailed technical and product documentation, see the respective `README.md` files in each subdirectory.
 
+## Documentation
+
+- [API Documentation](./docs/API.md) - Detailed documentation of all API endpoints
+- [Contributing Guide](./docs/CONTRIBUTING.md) - How to contribute to the project
+- [Changelog](./docs/CHANGELOG.md) - History of changes and versions
+- [Roadmap](./docs/ROADMAP.md) - Future plans and features
+
 > **Directory Structure**
 >
 > - `.devcontainer/` – Only for dev environment setup
