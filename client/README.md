@@ -140,3 +140,22 @@ npm test -- --watch # Run tests in watch mode
 - `jest.config.js` - Jest configuration
 
 For more details about the testing setup and recent changes, see `BABEL_REMOVAL.md`.
+
+## Known Issues
+
+### Month Selection Bug (2025-05-27)
+
+There is currently an issue with the month selection functionality in the calendar creation interface. When attempting to select multiple months, only January remains selected regardless of other selections. This issue is tracked in the main issues log and will be addressed in upcoming development work.
+
+### Features Implementation Status
+
+| Feature                        | Status         | Notes                     |
+| ------------------------------ | -------------- | ------------------------- |
+| Calendar month/year selection  | 🚧 In Progress | Multi-month selection bug |
+| Event date input               | ✅ Complete    |                           |
+| Background image generation    | ✅ Complete    |                           |
+| Theme and style AI suggestions | 🚧 In Progress |                           |
+| Calendar PDF export            | ✅ Complete    |                           |
+| Calendar PNG export            | ✅ Complete    |                           |
+| Interactive online preview     | 🚧 In Progress |                           |
+| Save/load projects             | 🚧 In Progress |                           |

@@ -9,6 +9,29 @@
 > - `services/` – Service layer for business logic and integrations
 > - `utils/` – Utility functions
 
+## Implementation Status (as of May 27, 2025)
+
+### Completed Features
+
+- Calendar API with full CRUD operations
+  - Get all calendars and specific calendar by ID
+  - Create new calendars with events
+  - Update existing calendars
+  - Delete calendars
+- TypeScript migration for calendar routes
+- Comprehensive test coverage (100% statements, 84.21% branches)
+- Error handling for all endpoints
+
+### Next Steps
+
+- Database integration with PostgreSQL and Prisma
+- PDF export functionality
+- External calendar service integration
+- Project save/load features
+- GenAI integration for themes
+
+For detailed API documentation, see [API Documentation](../docs/API.md).
+
 ## Backend Vision & Role
 
 - **Project Goal:** Orchestrate a magical, effortless experience for crafting stunningly unique, personalized, printable calendars using AI.
@@ -58,3 +81,19 @@
 - Integration with all calendar providers (start with Google).
 - Advanced, granular layout customization tools.
 - Direct e-commerce integration.
+
+## Known Issues
+
+### Server Startup Issue (2025-05-27)
+
+Currently experiencing issues with server startup using `npm run dev` or `ts-node`. The error relates to module resolution for the `www` file. This will be addressed in the next development session. For now, the frontend can be developed and tested independently.
+
+### Getting Started
+
+To get started with the ChronosCraft AI server:
+
+1. **Clone the repository:**
+
+   ```bash
+   git clone https://github.com/yourusername/chronoscraf
+   ```

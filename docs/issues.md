@@ -133,3 +133,51 @@ For detailed configuration notes, see:
 - Need to expand test coverage
 - API documentation needed
 - TypeScript migration for backend endpoints
+
+## Server Startup Issue (2025-05-27)
+
+### 1. Error Description:
+
+Backend server fails to start with MODULE_NOT_FOUND error when attempting to run with `ts-node ./bin/www` or `npm run dev`.
+
+### 2. Steps to Reproduce:
+
+1. Navigate to server directory
+2. Run `npm run dev` or `npx ts-node ./bin/www`
+3. Receive error: "Cannot find module './www'"
+
+### 3. Current Status:
+
+- Issue identified and documented
+- Temporary workaround: Use frontend independently while backend fix is pending
+- To be resolved in next development session
+
+### 4. Notes/Context:
+
+- Error suggests possible path resolution issue with ts-node and project structure
+- May be related to the nested server directory structure
+- Priority: High (blocks backend development and testing)
+
+## Calendar Month Selection UI Issue (2025-05-27)
+
+### 1. Error Description:
+
+When attempting to select multiple months in the calendar creation interface, only January remains selected regardless of other month selections.
+
+### 2. Steps to Reproduce:
+
+1. Access the calendar creation interface
+2. Attempt to select multiple months
+3. Observe that only January remains selected, while other month selections are not persisted
+
+### 3. Current Status:
+
+- Issue identified during frontend testing
+- Affects the month selection functionality in CalendarCreator component
+- Priority: High (impacts core calendar creation functionality)
+
+### 4. Notes/Context:
+
+- Likely related to state management in the CalendarCreator component
+- May indicate issues with the month selection state persistence
+- To be investigated in the frontend components, particularly CalendarCreator.tsx
