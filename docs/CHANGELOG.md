@@ -34,7 +34,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Fixed
 
 - Fixed frontend `exportToPDF` utility export/import so tests pass
-- All backend and frontend tests now pass
+- Verified all backend tests pass with 100% statement coverage
+- Confirmed frontend component tests pass
+- Successfully ran and validated integration tests with Playwright
+- Added proper port management in integration test script
 
 ### Technical Debt Resolved
 
