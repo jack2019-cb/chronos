@@ -1,5 +1,7 @@
 # ChronosCraft AI API Documentation
 
+> **Note:** This file is now maintained in `/docs/addenda/API.md`. For the main project vision, MVP, and actionable tasks, see `ROADMAP.md`, `MVP_CHECKLIST.md`, and `NEXT_STEPS.md` in the docs root.
+
 ## Calendar API
 
 Base URL: `/calendar`

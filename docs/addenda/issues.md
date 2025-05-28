@@ -1,0 +1,3 @@
+# ChronosCraft AI Issues Log
+
+// ...existing code from previous issues.md...

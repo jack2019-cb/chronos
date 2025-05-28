@@ -1,5 +1,7 @@
 # Roadmap
 
+> **Note:** For detailed issues, API reference, and historical notes, see `/docs/addenda/`.
+
 This document outlines the planned features, priorities, and future directions for ChronosCraft AI.
 
 ## Milestones

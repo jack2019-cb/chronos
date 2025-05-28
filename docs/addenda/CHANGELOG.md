@@ -1,0 +1,3 @@
+# ChronosCraft AI Changelog
+
+// ...existing code from previous CHANGELOG.md...

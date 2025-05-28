@@ -1,5 +1,7 @@
 # ChronosCraft AI Issues Log
 
+> **Note:** This file is now maintained in `/docs/addenda/issues.md`. For the main project vision, MVP, and actionable tasks, see `ROADMAP.md`, `MVP_CHECKLIST.md`, and `NEXT_STEPS.md` in the docs root.
+
 ## Next.js Development Server Access Issue (2025-05-24)
 
 ### 1. Error Description:

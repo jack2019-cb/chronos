@@ -1,4 +1,6 @@
-# Changelog
+# ChronosCraft AI Changelog
+
+> **Note:** This file is now maintained in `/docs/addenda/CHANGELOG.md`. For the main project vision, MVP, and actionable tasks, see `ROADMAP.md`, `MVP_CHECKLIST.md`, and `NEXT_STEPS.md` in the docs root.
 
 All notable changes to this project will be documented in this file.
 

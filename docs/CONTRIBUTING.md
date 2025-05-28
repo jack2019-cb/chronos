@@ -1,5 +1,7 @@
 # Contributing to ChronosCraft AI
 
+> **Note:** For detailed issues, API reference, and historical notes, see `/docs/addenda/`.
+
 Thank you for your interest in contributing! This guide explains our workflow and development standards.
 
 ## Getting Started

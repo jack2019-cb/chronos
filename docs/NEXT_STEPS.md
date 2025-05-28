@@ -1,5 +1,7 @@
 # Next Steps for ChronosCraft AI
 
+> **Note:** For detailed issues, API reference, and historical notes, see `/docs/addenda/`.
+
 ## Recent Progress (as of 2025-05-27)
 
 - Cleaned up and standardized the `client/` directory structure for Next.js best practices

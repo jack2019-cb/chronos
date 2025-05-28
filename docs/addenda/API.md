@@ -1,0 +1,3 @@
+# ChronosCraft AI API Documentation
+
+// ...existing code from previous API.md...

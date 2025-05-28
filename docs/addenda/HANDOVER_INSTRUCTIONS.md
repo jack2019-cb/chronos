@@ -1,0 +1,3 @@
+# ChronosCraft AI Project Handover Instructions
+
+// ...existing code from previous HANDOVER_INSTRUCTIONS.md...

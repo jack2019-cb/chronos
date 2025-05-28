@@ -1,5 +1,7 @@
 # ChronosCraft AI – MVP Development Checklist
 
+> **Note:** For detailed issues, API reference, and historical notes, see `/docs/addenda/`.
+
 ## Bootstrapping & Dependency Management
 
 > **Note:** The development environment uses a dev container with Node.js, npm, and ESLint pre-installed. Manual installation of these tools is not required. Focus on configuration and project-specific setup.
