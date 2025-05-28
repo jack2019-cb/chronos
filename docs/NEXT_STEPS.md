@@ -44,6 +44,13 @@
 - Ensure all code passes linting and tests before merging to `dev`
 - Note: The dev container ensures a consistent environment for all contributors, so onboarding and setup are simplified. Focus on configuration and feature development rather than tool installation.
 
+## Immediate Technical Debt Sprint (2025-05-28)
+
+- Migrate all backend JavaScript files to TypeScript
+- Review and expand test coverage for backend and frontend
+- Audit and update documentation for all APIs and modules
+- Document progress and completion in CHANGELOG.md and issues.md
+
 ---
 
 _You are ready to continue building out ChronosCraft AI!_

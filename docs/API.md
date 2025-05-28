@@ -145,3 +145,21 @@ The API has comprehensive test coverage:
 - Lines: 100%
 
 Tests include both success and error cases for all endpoints.
+
+## Project Save/Load API (Planned)
+
+Base URL: `/project`
+
+- Endpoints for saving and loading project data will be documented here as implemented.
+
+## GenAI Integration API (Planned)
+
+Base URL: `/genai`
+
+- Endpoints for GenAI-powered theme/styling will be documented here as implemented.
+
+## PDF Export Utility (Frontend)
+
+- The frontend provides a utility to export calendar data to PDF.
+- See `client/src/app/utils/pdfExport.ts` for implementation details.
+- Tests for this utility are in `client/__tests__/pdfExport.test.ts`.

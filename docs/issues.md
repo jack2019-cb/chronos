@@ -130,9 +130,12 @@ For detailed configuration notes, see:
 
 ### 3. Technical Debt:
 
-- Need to expand test coverage
-- API documentation needed
-- TypeScript migration for backend endpoints
+- TypeScript migration for backend endpoints (core server and routes migrated as of 2025-05-28; review other modules ongoing)
+- Review and expand test coverage for all modules (in progress)
+- Audit and update documentation for all APIs and modules (in progress)
+
+> **Note (2025-05-28):**
+> Backend server entrypoint and routes (index, users, app, www) migrated to TypeScript. Calendar API and main server logic now TypeScript-based. Reviewing other modules for further migration and coverage.
 
 ## Server Startup Issue (2025-05-27)
 
