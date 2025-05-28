@@ -17,6 +17,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Initial calendar display grid component
 - Basic test suite for calendar functionality
 - Added GitHub Actions workflow for automated CI (backend & frontend tests)
+- Added Playwright integration test scaffold and configuration
+- Added start-dev.sh script to automate backend/frontend startup and integration testing
 
 ### Changed
 

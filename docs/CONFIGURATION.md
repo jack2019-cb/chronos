@@ -83,6 +83,30 @@ GEMINI_API_KEY=your_key_here  # Required for GenAI features
    - Set up all required API keys
    - Configure database credentials
 
+## Integration Testing
+
+### Automated Integration Tests with Playwright
+
+- Playwright is configured in `client/playwright.config.ts`.
+- Integration tests are located in `client/playwright/`.
+- To run integration tests, use the `start-dev.sh` script at the project root.
+
+### Usage
+
+```sh
+./start-dev.sh
+```
+
+This script:
+
+- Kills any processes on ports 3000 (frontend) and 5000 (backend)
+- Starts the backend and waits for it to be ready
+- Starts the frontend and waits for it to be ready
+- Runs Playwright integration tests (Chromium only)
+- Shuts down both servers after tests complete
+
+> Note: Playwright test output and reports are not committed to version control.
+
 ## Additional Resources
 
 - See `docs/API.md` for API documentation
