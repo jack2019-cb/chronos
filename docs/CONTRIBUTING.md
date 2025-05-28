@@ -34,10 +34,25 @@ Thank you for your interest in contributing! This guide explains our workflow an
 ## Running Tests
 
 - **Backend:**
-  - `cd server && npm test` (runs Vitest)
+  - `cd server && npm test` (runs Jest)
 - **Frontend:**
   - `cd client && npm test` (runs React Testing Library)
+- **Integration Tests:**
+  - `./start-dev.sh` (runs Playwright tests with automated server startup/shutdown)
+  - Or manually: `cd client && npx playwright test --project=chromium`
 - Add/expand tests for new features and bugfixes
+- Integration tests are in `client/playwright/`
+
+## Test Automation
+
+The project includes automated test workflows:
+
+- `start-dev.sh` script automates the integration test process:
+  1. Starts backend (port 5000)
+  2. Starts frontend (port 3000)
+  3. Runs Playwright integration tests
+  4. Gracefully shuts down servers
+- CI/CD runs all test suites via GitHub Actions
 
 ## Linting & Formatting
 
