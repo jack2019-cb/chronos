@@ -1,9 +1,11 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from "@playwright/test";
 
-test.describe('Calendar Integration', () => {
-  test('should load homepage and display calendar UI', async ({ page }) => {
-    await page.goto('/');
-    await expect(page.locator('text=Calendar')).toBeVisible();
+test.describe("Calendar Integration", () => {
+  test("should load homepage and display calendar UI", async ({ page }) => {
+    await page.goto("/");
+    await expect(
+      page.getByRole("heading", { name: "Create Your Calendar" })
+    ).toBeVisible();
   });
 
   // Example: Add more tests for creating a calendar, etc.

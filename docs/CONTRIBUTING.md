@@ -56,6 +56,27 @@ The project includes automated test workflows:
   4. Gracefully shuts down servers
 - CI/CD runs all test suites via GitHub Actions
 
+## Integration & End-to-End Testing
+
+- The `start-dev.sh` script now uses a robust HTTP check to ensure the frontend is actually serving before running integration tests.
+- Playwright test selectors have been updated for reliability (e.g., using getByRole for headings).
+- If you encounter a 502 error when accessing the frontend, check Codespaces port forwarding, server logs, and ensure the frontend is running and accessible at http://localhost:3000.
+
+To run full integration tests (backend + frontend + browser automation), use the `start-dev.sh` script in the project root. This script:
+
+- Frees up ports 3000 and 5000
+- Starts backend and frontend servers, waiting for each to be ready
+- Runs Playwright integration tests
+- Shuts down both servers after tests complete
+
+**Usage:**
+
+```zsh
+./start-dev.sh
+```
+
+This is the recommended workflow for verifying backend/frontend integration and running Playwright tests locally or in CI.
+
 ## Linting & Formatting
 
 - **Backend:** `cd server && npm run lint`

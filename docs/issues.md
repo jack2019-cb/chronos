@@ -2,6 +2,19 @@
 
 > **Note:** This file is now maintained in `/docs/addenda/issues.md`. For the main project vision, MVP, and actionable tasks, see `ROADMAP.md`, `MVP_CHECKLIST.md`, and `NEXT_STEPS.md` in the docs root.
 
+---
+
+## [2025-05-28] HTTP ERROR 502 on Frontend
+
+- **Description:** When accessing the frontend (e.g., via Codespaces URL), a 502 Bad Gateway error is shown.
+- **Context:** This typically means the frontend server is not running, not accessible, or port 3000 is not public in Codespaces.
+- **Troubleshooting:**
+  - Ensure `client` server is running (`npm run dev` in `client/`)
+  - Check Codespaces port forwarding (port 3000 must be public)
+  - Review server logs for errors
+  - Confirm no port conflicts
+- **Status:** Ongoing
+
 ## Next.js Development Server Access Issue (2025-05-24)
 
 ### 1. Error Description:

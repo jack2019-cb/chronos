@@ -65,6 +65,28 @@ For detailed configuration and setup instructions, see `docs/CONFIGURATION.md`.
 - Do not commit secrets or sensitive values to the repository.
 - See `CONTRIBUTING.md` for more details on environment variable management.
 
+## Integration Testing with start-dev.sh
+
+To run full integration (end-to-end) tests across both backend and frontend, use the `start-dev.sh` script in the project root. This script:
+
+- Ensures ports 3000 (frontend) and 5000 (backend) are free
+- Starts the backend and waits for it to be ready
+- Starts the frontend and waits for it to be ready
+- Runs Playwright integration tests (real browser automation)
+- Shuts down both servers after tests complete
+
+**Usage:**
+
+```zsh
+./start-dev.sh
+```
+
+This is the recommended way to verify backend/frontend integration and run Playwright tests locally or in CI.
+
+- The `start-dev.sh` script now uses a robust HTTP check for frontend readiness.
+- Playwright integration tests require the frontend to be accessible at http://localhost:3000.
+- If you see HTTP ERROR 502, ensure the frontend server is running and port 3000 is public in Codespaces.
+
 ---
 
 _For the full product vision and feature breakdown, see the documentation in each subproject._

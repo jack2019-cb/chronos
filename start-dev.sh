@@ -4,7 +4,7 @@
 # Exit on error
 set -e
 
-# Function to check if a port is in use
+# Function to check if a port is in use (for backend)
 check_port() {
     local port=$1
     if lsof -i :"$port" > /dev/null 2>&1; then
@@ -14,18 +14,36 @@ check_port() {
     fi
 }
 
-# Function to wait for service
+# Function to check if a service is ready (HTTP check for frontend)
+check_http() {
+    local url=$1
+    if curl -s --head --request GET "$url" | grep "200 OK" > /dev/null; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Function to wait for service (port or HTTP)
 wait_for_service() {
     local port=$1
     local name=$2
     local max_attempts=30
     local attempt=1
+    local url=$3
 
     echo "Waiting for $name to be ready on port $port..."
     while [ $attempt -le $max_attempts ]; do
-        if check_port "$port"; then
-            echo "$name is ready on port $port!"
-            return 0
+        if [ -n "$url" ]; then
+            if check_http "$url"; then
+                echo "$name is ready on $url!"
+                return 0
+            fi
+        else
+            if check_port "$port"; then
+                echo "$name is ready on port $port!"
+                return 0
+            fi
         fi
         echo "Attempt $attempt/$max_attempts: $name not ready yet..."
         sleep 2
@@ -51,8 +69,8 @@ echo "Starting frontend..."
 (cd client && npm run dev) &
 FRONTEND_PID=$!
 
-# Wait for frontend
-wait_for_service 3000 "Frontend" || { kill $BACKEND_PID $FRONTEND_PID; exit 1; }
+# Wait for frontend (use HTTP check)
+wait_for_service 3000 "Frontend" "http://localhost:3000" || { kill $BACKEND_PID $FRONTEND_PID; exit 1; }
 
 echo "Both services are running. Starting Playwright tests..."
 (cd client && npx playwright test --project=chromium)
