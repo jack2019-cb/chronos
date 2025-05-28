@@ -6,7 +6,7 @@ import http from "http";
 
 const debug = debugLib("server:server");
 
-const port = normalizePort(process.env.PORT || "3000");
+const port = normalizePort(process.env.PORT || "5000");
 app.set("port", port);
 
 const server = http.createServer(app);

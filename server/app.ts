@@ -1,13 +1,13 @@
-import express from "express";
+import express, { Express } from "express";
 import path from "path";
 import cookieParser from "cookie-parser";
 import logger from "morgan";
 
 import indexRouter from "./routes/index";
 import usersRouter from "./routes/users";
-import calendarRouter from "../routes/calendar";
+import calendarRouter from "./routes/calendar";
 
-const app = express();
+const app: Express = express();
 
 app.use(logger("dev"));
 app.use(express.json());

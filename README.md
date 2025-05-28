@@ -19,25 +19,28 @@ ChronosCraft AI is a web application where users co-create beautiful, personaliz
 
 For detailed technical and product documentation, see the respective `README.md` files in each subdirectory.
 
+## Quick Start
+
+1. Set up your development environment (see `docs/CONFIGURATION.md`)
+2. Install dependencies for both client and server
+3. Start the development servers
+
 ## Documentation
 
-- [API Documentation](./docs/API.md) - Detailed documentation of all API endpoints
-- [Contributing Guide](./docs/CONTRIBUTING.md) - How to contribute to the project
-- [Changelog](./docs/CHANGELOG.md) - History of changes and versions
-- [Roadmap](./docs/ROADMAP.md) - Future plans and features
+- 📚 `docs/CONFIGURATION.md` - Setup and configuration guide
+- 🔧 `docs/API.md` - API documentation and endpoints
+- 👥 `docs/CONTRIBUTING.md` - Development workflow and guidelines
+- 📝 `docs/CHANGELOG.md` - Version history and changes
 
-> **Directory Structure**
->
-> - `.devcontainer/` – Only for dev environment setup
-> - `client/` – See above
-> - `docs/` – For all product, technical, and process documentation
-> - `infra/` – For infrastructure-as-code (IaC) or deployment configs
-> - `scripts/` – For automation scripts (setup, lint, test, deploy, etc.)
-> - `server/` – See above
->
-> **Development Environment**
->
-> This project uses a dev container with Node.js, npm, and ESLint pre-installed. Manual installation of these tools is not required. Focus on configuration and project-specific setup.
+## Project Structure
+
+```
+client/      # Next.js frontend
+server/      # Express backend
+docs/        # Project documentation
+```
+
+For detailed configuration and setup instructions, see `docs/CONFIGURATION.md`.
 
 ## Technology Vibe
 
@@ -61,13 +64,6 @@ For detailed technical and product documentation, see the respective `README.md`
 - The dev container and Codespaces support environment variables out of the box.
 - Do not commit secrets or sensitive values to the repository.
 - See `CONTRIBUTING.md` for more details on environment variable management.
-
-## Quick Start
-
-This project is designed for development in a containerized environment (see Dev Containers).
-
-1. Open in VS Code with the Dev Containers extension.
-2. See [`client/README.md`](./client/README.md) and [`server/README.md`](./server/README.md) for setup and contribution details.
 
 ---
 

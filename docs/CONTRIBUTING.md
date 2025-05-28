@@ -1,36 +1,35 @@
 # Contributing to ChronosCraft AI
 
-Thank you for your interest in contributing! This guide explains our workflow, coding standards, and how to get started.
+Thank you for your interest in contributing! This guide explains our workflow and development standards.
+
+## Getting Started
+
+1. First, read `CONFIGURATION.md` for environment setup
+2. Ensure all services are properly configured (ports, environment variables)
+3. Follow the local development setup below
 
 ## Project Structure
 
-- `.devcontainer/` – Only for dev environment setup
-- `client/` – React/Next.js frontend
-- `docs/` – Project documentation (including this file)
-- `infra/` – For infrastructure-as-code (IaC) or deployment configs
-- `scripts/` – For automation scripts (setup, lint, test, deploy, etc.)
-- `server/` – Node.js/Express backend
+- `.devcontainer/` – Development environment configuration
+- `client/` – React/Next.js frontend (port 3000)
+- `server/` – Node.js/Express backend (port 5000)
+- `docs/` – Project documentation
 - `.github/` – GitHub Actions workflows
-
-## Branching Strategy
-
-- `main`: Stable, production-ready code
-- `dev`: Ongoing development and integration
-- `feature/*`: Feature branches (merge to `dev` via PR)
-- `hotfix/*`: Urgent fixes (merge to `main` and `dev`)
-
-## Pull Requests & Code Review
-
-- Open PRs against the `dev` branch
-- Ensure all checks (lint, test, CI) pass before requesting review
-- Use clear, descriptive PR titles and link related issues
-- At least one approval required before merging
 
 ## Local Development
 
-- Use VS Code Dev Containers or Codespaces for a consistent environment
-- Secrets (e.g., database credentials) are managed via Codespace secrets
-- For local dev, copy `.env.example` to `.env` and fill in required values
+1. Use VS Code Dev Containers or GitHub Codespaces
+2. Copy `.env.example` to `.env` in both client and server
+3. Set required environment variables (see `CONFIGURATION.md`)
+4. Start services:
+
+   ```bash
+   # Terminal 1 - Backend
+   cd server && npm run dev
+
+   # Terminal 2 - Frontend
+   cd client && npm run dev
+   ```
 
 ## Running Tests
 
