@@ -15,4 +15,9 @@ module.exports = {
   testEnvironmentOptions: {
     url: "http://localhost:3000",
   },
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/playwright/', // Ignore Playwright tests
+    '/playwright-report/'
+  ],
 };
