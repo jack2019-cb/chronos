@@ -1,4 +1,4 @@
-import { exportToPDF } from "../src/app/utils/pdfExport";
+import { exportToPDF } from "../src/utils/pdfExport";
 
 describe("exportToPDF utility", () => {
   it("should be defined", () => {

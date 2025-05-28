@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Frontend calendar creator components
 - Initial calendar display grid component
 - Basic test suite for calendar functionality
+- Added GitHub Actions workflow for automated CI (backend & frontend tests)
 
 ### Changed
 
@@ -27,6 +28,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Added comprehensive test coverage for calendar endpoints
 - Enhanced error handling for calendar operations
 - Migrated backend server entrypoint and routes to TypeScript
+
+### Fixed
+
+- Fixed frontend `exportToPDF` utility export/import so tests pass
+- All backend and frontend tests now pass
 
 ### Technical Debt Resolved
 

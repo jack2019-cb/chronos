@@ -3,7 +3,7 @@ const router = Router();
 
 // GET home page
 router.get("/", (req: Request, res: Response, next: NextFunction) => {
-  res.render("index", { title: "Express" });
+  res.json({ message: "Welcome to the Calendar API" });
 });
 
 export default router;
