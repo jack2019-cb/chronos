@@ -199,3 +199,14 @@ When attempting to select multiple months in the calendar creation interface, on
 - Likely related to state management in the CalendarCreator component
 - May indicate issues with the month selection state persistence
 - To be investigated in the frontend components, particularly CalendarCreator.tsx
+
+---
+
+# Priority Issue: Dependency and Security Warnings
+
+- The project has had several deprecated and vulnerable dependencies, as reported by npm install and npm audit.
+- These issues were resolved by running `npm audit fix --force`, which updated some packages (including next) outside the original version range.
+- **Priority:** Regularly review and update dependencies. Monitor for breaking changes after forced updates. Document and address any compatibility issues that arise from these updates.
+- **Action:** Add dependency and security review to the regular maintenance checklist.
+
+---
