@@ -101,4 +101,3 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Technical Debt
 - Improved dev container configuration for better database reliability
-- Updated .env configuration to support both local and container development

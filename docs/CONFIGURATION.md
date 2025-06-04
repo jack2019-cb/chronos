@@ -20,15 +20,15 @@
 
 ```env
 DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
-POSTGRES_DB=chronocraft
-POSTGRES_USER=vscode
-POSTGRES_PASSWORD=password  # Change in production
+POSTGRES_DB=chronoscraftDB
+POSTGRES_USER=chronosUSR
+POSTGRES_PASSWORD=chronosPWD  # Change in production
 ```
 
 ### API Keys
 
 ```env
-GEMINI_API_KEY=your_key_here  # Required for GenAI features
+GEMINI_API_KEY=GEMINI_API_KEY  # Required for GenAI features
 ```
 
 ## Service Configuration
@@ -36,13 +36,11 @@ GEMINI_API_KEY=your_key_here  # Required for GenAI features
 ### Frontend (Next.js)
 
 - Configuration file: `client/next.config.ts`
-- Environment setup: `client/.env.local`
 - Development command: `npm run dev`
 
 ### Backend (Express)
 
 - Configuration file: `server/bin/www.ts`
-- Environment setup: `server/.env`
 - Development command: `npm run dev`
 - Default port: 5000 (configurable via PORT environment variable)
 
@@ -79,7 +77,6 @@ GEMINI_API_KEY=your_key_here  # Required for GenAI features
    - Check if database service is running (`docker ps`)
 
 3. **Environment Variables**
-   - Copy `.env.example` to `.env` in both client and server
    - Set up all required API keys
    - Configure database credentials
 
