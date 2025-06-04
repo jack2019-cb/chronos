@@ -29,9 +29,8 @@ Thank you for your interest in contributing! This guide explains our workflow an
 ## Local Development
 
 1. Use VS Code Dev Containers or GitHub Codespaces
-2. Copy `.env.example` to `.env` in both client and server
-3. Set required environment variables (see `CONFIGURATION.md`)
-4. Start services:
+2. Configure environment variables in GitHub Codespaces Secrets or Dev Container configuration (see `CONFIGURATION.md`)
+3. Start services:
 
    ```bash
    # Terminal 1 - Backend
@@ -40,6 +39,8 @@ Thank you for your interest in contributing! This guide explains our workflow an
    # Terminal 2 - Frontend
    cd client && npm run dev
    ```
+
+> **Important:** We do not use `.env` files. All configuration is managed through GitHub Codespaces Secrets and Dev Container configuration to ensure consistency and security.
 
 ## Running Tests
 
