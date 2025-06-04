@@ -2,6 +2,10 @@ import express, { Request, Response, Router } from "express";
 import { prisma } from "../lib/prisma";
 import { handleDatabaseError, CalendarError } from "../lib/errors";
 import { Prisma } from "@prisma/client";
+import {
+  exportCalendarToPDF,
+  type CalendarEvent,
+} from "@shared/utils/pdfExport";
 
 const router: Router = express.Router();
 
@@ -231,6 +235,38 @@ router.delete("/:id", async (req: Request, res: Response): Promise<void> => {
     ]);
 
     res.status(204).send();
+  } catch (error) {
+    handleDatabaseError(error, res);
+  }
+});
+
+// GET /calendar/:id/pdf - Export calendar to PDF
+router.get("/:id/pdf", async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
+
+  try {
+    const calendar = await prisma.calendar.findUnique({
+      where: { id },
+      include: { events: true },
+    });
+
+    if (!calendar) {
+      throw new CalendarError("Calendar not found", 404);
+    }
+
+    const pdfBytes = await exportCalendarToPDF({
+      year: calendar.year,
+      selectedMonths: calendar.selectedMonths,
+      events: calendar.events,
+      backgroundUrl: calendar.backgroundUrl || undefined,
+    });
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${calendar.year}-calendar.pdf"`
+    );
+    res.send(Buffer.from(pdfBytes));
   } catch (error) {
     handleDatabaseError(error, res);
   }
