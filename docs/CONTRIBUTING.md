@@ -99,8 +99,19 @@ This is the recommended workflow for verifying backend/frontend integration and 
 
 ## CI/CD
 
-- All PRs run backend CI (lint + test) via GitHub Actions
-- Additional workflows for frontend and deploys are planned
+All pushes to main, develop, and feature branches, as well as pull requests, trigger our CI workflow which:
+
+- Runs backend Jest tests
+- Runs frontend Jest + React Testing Library tests
+- Verifies dependency installation for both services
+
+Planned Enhancements:
+
+- Integration of Playwright tests in CI pipeline
+- Production build verification steps
+- Automated linting checks
+- Code coverage reporting and tracking
+- Deployment workflows for staging/production
 
 ## Documentation
 
