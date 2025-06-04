@@ -1,113 +1,239 @@
 import express, { Request, Response, Router } from "express";
+import { prisma } from "../lib/prisma";
+import { handleDatabaseError, CalendarError } from "../lib/errors";
+import { Prisma } from "@prisma/client";
+
 const router: Router = express.Router();
 
-interface CalendarEvent {
-  date: string;
-  title: string;
-}
+// Validate calendar input
+function validateCalendarInput(body: any): void {
+  const { year, selectedMonths } = body;
 
-interface Calendar {
-  id: string;
-  year: number;
-  selectedMonths: string[];
-  events: CalendarEvent[];
-  backgroundUrl?: string;
-  createdAt: string;
-  updatedAt: string;
-}
+  if (!year || typeof year !== "number") {
+    throw new CalendarError("Year is required and must be a number", 400);
+  }
 
-// In-memory storage for calendars (temporary until database integration)
-let calendars: Calendar[] = [];
+  if (
+    !selectedMonths ||
+    !Array.isArray(selectedMonths) ||
+    selectedMonths.length === 0
+  ) {
+    throw new CalendarError("At least one month must be selected", 400);
+  }
+
+  const validMonths = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+
+  const invalidMonths = selectedMonths.filter(
+    (month) => !validMonths.includes(month)
+  );
+  if (invalidMonths.length > 0) {
+    throw new CalendarError("Invalid months provided", 400, { invalidMonths });
+  }
+}
 
 // GET /calendar - Get all calendars or specific calendar
 router.get("/", async (req: Request, res: Response): Promise<void> => {
   const { id } = req.query;
-  if (id && typeof id === "string") {
-    const calendar = calendars.find((c) => c.id === id);
-    if (!calendar) {
-      res.status(404).json({ message: "Calendar not found" });
+  try {
+    if (id && typeof id === "string") {
+      const calendar = await prisma.calendar.findUnique({
+        where: { id },
+        include: { events: true },
+      });
+
+      if (!calendar) {
+        throw new CalendarError("Calendar not found", 404);
+      }
+
+      res.json(calendar);
       return;
     }
-    res.json(calendar);
-    return;
+
+    const calendars = await prisma.calendar.findMany({
+      include: { events: true },
+    });
+
+    res.json({
+      calendars,
+      months: [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+      ],
+    });
+  } catch (error) {
+    handleDatabaseError(error, res);
   }
-  res.json({
-    calendars,
-    months: [
-      "January",
-      "February",
-      "March",
-      "April",
-      "May",
-      "June",
-      "July",
-      "August",
-      "September",
-      "October",
-      "November",
-      "December",
-    ],
-  });
 });
 
 // POST /calendar - Create a new calendar
 router.post("/", async (req: Request, res: Response): Promise<void> => {
-  const { year, selectedMonths, events, backgroundUrl } = req.body;
+  try {
+    validateCalendarInput(req.body);
 
-  if (!year || !selectedMonths) {
-    res.status(400).json({ message: "Year and selectedMonths are required" });
-    return;
+    const { year, selectedMonths, events = [], backgroundUrl } = req.body;
+
+    // Validate event dates
+    events.forEach((event: { date: string; title: string }) => {
+      if (!event.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        throw new CalendarError(
+          "Invalid event date format. Use YYYY-MM-DD",
+          400,
+          { date: event.date }
+        );
+      }
+      if (!event.title || typeof event.title !== "string") {
+        throw new CalendarError(
+          "Event title is required and must be a string",
+          400
+        );
+      }
+    });
+
+    const newCalendar = await prisma.calendar.create({
+      data: {
+        year,
+        selectedMonths,
+        backgroundUrl,
+        events: {
+          create: events.map((event: { date: string; title: string }) => ({
+            date: event.date,
+            title: event.title,
+          })),
+        },
+      },
+      include: {
+        events: true,
+      },
+    });
+
+    res.status(201).json(newCalendar);
+  } catch (error) {
+    handleDatabaseError(error, res);
   }
-
-  const newCalendar: Calendar = {
-    id: Date.now().toString(),
-    year,
-    selectedMonths,
-    events: events || [],
-    backgroundUrl,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-
-  calendars.push(newCalendar);
-  res.status(201).json(newCalendar);
 });
 
 // PUT /calendar/:id - Update an existing calendar
 router.put("/:id", async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
-  const { year, selectedMonths, events, backgroundUrl } = req.body;
 
-  const calendarIndex = calendars.findIndex((c) => c.id === id);
-  if (calendarIndex === -1) {
-    res.status(404).json({ message: "Calendar not found" });
-    return;
+  try {
+    // Check if calendar exists first
+    const existingCalendar = await prisma.calendar.findUnique({
+      where: { id },
+    });
+
+    if (!existingCalendar) {
+      throw new CalendarError("Calendar not found", 404);
+    }
+
+    if (req.body.selectedMonths || req.body.year) {
+      validateCalendarInput({
+        year: req.body.year || existingCalendar.year,
+        selectedMonths:
+          req.body.selectedMonths || existingCalendar.selectedMonths,
+      });
+    }
+
+    const { year, selectedMonths, events, backgroundUrl } = req.body;
+
+    if (events) {
+      events.forEach((event: { date: string; title: string }) => {
+        if (!event.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          throw new CalendarError(
+            "Invalid event date format. Use YYYY-MM-DD",
+            400,
+            { date: event.date }
+          );
+        }
+        if (!event.title || typeof event.title !== "string") {
+          throw new CalendarError(
+            "Event title is required and must be a string",
+            400
+          );
+        }
+      });
+    }
+
+    // Update calendar and its events
+    const updatedCalendar = await prisma.calendar.update({
+      where: { id },
+      data: {
+        year: year !== undefined ? year : undefined,
+        selectedMonths:
+          selectedMonths !== undefined ? selectedMonths : undefined,
+        backgroundUrl: backgroundUrl !== undefined ? backgroundUrl : undefined,
+        events: events
+          ? {
+              deleteMany: {},
+              create: events.map((event: { date: string; title: string }) => ({
+                date: event.date,
+                title: event.title,
+              })),
+            }
+          : undefined,
+      },
+      include: {
+        events: true,
+      },
+    });
+
+    res.json(updatedCalendar);
+  } catch (error) {
+    handleDatabaseError(error, res);
   }
-
-  calendars[calendarIndex] = {
-    ...calendars[calendarIndex],
-    year: year || calendars[calendarIndex].year,
-    selectedMonths: selectedMonths || calendars[calendarIndex].selectedMonths,
-    events: events || calendars[calendarIndex].events,
-    backgroundUrl: backgroundUrl || calendars[calendarIndex].backgroundUrl,
-    updatedAt: new Date().toISOString(),
-  };
-
-  res.json(calendars[calendarIndex]);
 });
 
 // DELETE /calendar/:id - Delete a calendar
 router.delete("/:id", async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
-  const calendarIndex = calendars.findIndex((c) => c.id === id);
 
-  if (calendarIndex === -1) {
-    res.status(404).json({ message: "Calendar not found" });
-    return;
+  try {
+    // First check if calendar exists
+    const calendar = await prisma.calendar.findUnique({
+      where: { id },
+    });
+
+    if (!calendar) {
+      throw new CalendarError("Calendar not found", 404);
+    }
+
+    // Delete events first, then calendar using a transaction
+    await prisma.$transaction([
+      prisma.event.deleteMany({
+        where: { calendarId: id },
+      }),
+      prisma.calendar.delete({
+        where: { id },
+      }),
+    ]);
+
+    res.status(204).send();
+  } catch (error) {
+    handleDatabaseError(error, res);
   }
-
-  calendars.splice(calendarIndex, 1);
-  res.status(204).send();
 });
 
 export default router;
