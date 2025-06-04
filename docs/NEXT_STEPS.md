@@ -70,7 +70,7 @@ As documented in `CONTRIBUTING.md`, the following CI/CD improvements are needed:
 - Database Integration (PostgreSQL with Prisma):
 
   - [✓] Create Prisma schema (`/server/prisma/schema.prisma`)
-  - [ ] Initialize database and run first migration
+  - [✓] Initialize database and run first migration
   - [ ] Update calendar routes to use Prisma Client
   - [ ] Add error handling for database operations
   - [ ] Write database integration tests
