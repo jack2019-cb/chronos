@@ -63,6 +63,29 @@ As documented in `CONTRIBUTING.md`, the following CI/CD improvements are needed:
 - Audit and update documentation for all APIs and modules
 - Document progress and completion in CHANGELOG.md and issues.md
 
+## Branch Integration (2025-06-04)
+
+### Pre-Merge Requirements
+
+- [ ] Complete database integration with Prisma
+- [ ] Finish calendar API implementation
+- [ ] Complete documentation updates from Technical Debt Sprint
+
+### Merge Process
+
+1. Update and verify test coverage:
+   - [ ] Backend Jest tests
+   - [ ] Frontend Jest tests
+   - [ ] Integration tests
+2. Prepare merge:
+   - [ ] Create temporary merge branch from dev
+   - [ ] Test merge in temporary branch
+   - [ ] Verify database migrations
+3. Final merge:
+   - [ ] Merge feature/calendar-api into dev
+   - [ ] Verify deployment configuration
+   - [ ] Update deployment documentation
+
 ---
 
 _You are ready to continue building out ChronosCraft AI!_
