@@ -5,5 +5,4 @@ Files in this directory include:
 - API reference
 - Issues log
 - Changelog
-- Handover instructions
 - Any other historical or detailed addenda
