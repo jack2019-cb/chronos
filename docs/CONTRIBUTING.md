@@ -12,11 +12,19 @@ Thank you for your interest in contributing! This guide explains our workflow an
 
 ## Project Structure
 
-- `.devcontainer/` – Development environment configuration
+- `.devcontainer/` – Development environment configuration with Docker
 - `client/` – React/Next.js frontend (port 3000)
+  - `playwright/` – Integration tests
+  - `src/app/` – Next.js application code
+  - `__tests__/` – Unit tests
 - `server/` – Node.js/Express backend (port 5000)
+  - `prisma/` – Database schema and migrations
+  - `routes/` – API endpoints
+  - `__tests__/` – Unit tests
+  - `bin/` – Server startup configuration
 - `docs/` – Project documentation
-- `.github/` – GitHub Actions workflows
+  - `addenda/` – Additional documentation, changelog, and archived issues
+- `scripts/` – Development and maintenance scripts
 
 ## Local Development
 
