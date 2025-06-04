@@ -79,7 +79,7 @@ As documented in `CONTRIBUTING.md`, the following CI/CD improvements are needed:
 
   - [✓] Define proper data models for calendar events
   - [✓] Implement CRUD operations for events
-  - [ ] Add PDF export endpoint (`/server/routes/calendar.ts`)
+  - [✓] Add PDF export endpoint (`/server/routes/calendar.ts`)
   - [ ] Integrate with external calendar services
   - [ ] Add project save/load functionality
   - [ ] Implement GenAI integration for themes
