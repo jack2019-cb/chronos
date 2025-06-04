@@ -19,6 +19,16 @@
 
 ## Immediate Priority
 
+### CI/CD Enhancements
+
+As documented in `CONTRIBUTING.md`, the following CI/CD improvements are needed:
+
+- [ ] Add Playwright integration tests to CI pipeline
+- [ ] Implement production build verification steps
+- [ ] Add automated linting checks to CI workflow
+- [ ] Set up code coverage reporting and tracking
+- [ ] Create deployment workflows for staging/production environments
+
 ### Frontend (client/)
 
 - [ ] Begin implementing core calendar creation UI (select year/month, event input, etc.)
