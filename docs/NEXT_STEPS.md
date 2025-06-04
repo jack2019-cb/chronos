@@ -2,6 +2,35 @@
 
 > **Note:** For detailed issues, API reference, and historical notes, see `/docs/addenda/`.
 
+## Current Status (2025-06-04)
+
+### Active Branch: feature/calendar-api
+
+- Location: `/workspaces/caramel`
+- Last Completed: Prisma schema setup, initial database configuration
+- Currently Working: Documentation updates and CI/CD planning
+- Next Action: Database integration implementation
+
+### Key Files Modified
+
+- `/server/prisma/schema.prisma` - New database schema
+- `/docs/CONTRIBUTING.md` - Updated CI/CD documentation
+- `/.github/workflows/ci.yml` - Current CI configuration
+- `/docs/CONFIGURATION.md` - Updated environment configuration
+
+### Ready to Work On
+
+1. Database Integration:
+
+   - Schema created at `/server/prisma/schema.prisma`
+   - Next: Run initial migration
+   - Then: Implement database operations in calendar API
+
+2. CI/CD Pipeline:
+   - Current file: `/.github/workflows/ci.yml`
+   - Required changes documented in `CONTRIBUTING.md`
+   - Focus on Playwright integration first
+
 ## Recent Progress (as of 2025-05-27)
 
 - Cleaned up and standardized the `client/` directory structure for Next.js best practices
@@ -38,15 +67,24 @@ As documented in `CONTRIBUTING.md`, the following CI/CD improvements are needed:
 
 ### Backend (server/)
 
-- Calendar API implementation:
+- Database Integration (PostgreSQL with Prisma):
+
+  - [✓] Create Prisma schema (`/server/prisma/schema.prisma`)
+  - [ ] Initialize database and run first migration
+  - [ ] Update calendar routes to use Prisma Client
+  - [ ] Add error handling for database operations
+  - [ ] Write database integration tests
+
+- Calendar API Implementation:
+
   - [✓] Define proper data models for calendar events
   - [✓] Implement CRUD operations for events
-  - [ ] Add PDF export endpoint
+  - [ ] Add PDF export endpoint (`/server/routes/calendar.ts`)
   - [ ] Integrate with external calendar services
   - [ ] Add project save/load functionality
   - [ ] Implement GenAI integration for themes
+
 - [✓] Complete TypeScript migration for calendar API
-- [ ] Add database integration (PostgreSQL with Prisma)
 - [ ] Implement authentication and user/project persistence
 
 ### General
