@@ -46,13 +46,18 @@ Thank you for your interest in contributing! This guide explains our workflow an
 
 - **Backend:**
   - `cd server && npm test` (runs Jest)
+  - Tests are in `server/__tests__/*.test.ts`
+  - Coverage reports available in `server/coverage/`
 - **Frontend:**
-  - `cd client && npm test` (runs React Testing Library)
+  - `cd client && npm test` (runs Jest with React Testing Library)
+  - Component tests in `client/__tests__/*.test.tsx`
+  - Utility tests in `client/__tests__/*.test.ts`
 - **Integration Tests:**
   - `./start-dev.sh` (runs Playwright tests with automated server startup/shutdown)
   - Or manually: `cd client && npx playwright test --project=chromium`
+  - Tests are in `client/playwright/*.spec.ts`
+  - Reports available in `client/playwright-report/`
 - Add/expand tests for new features and bugfixes
-- Integration tests are in `client/playwright/`
 
 ## Test Automation
 
