@@ -60,8 +60,8 @@ As documented in `CONTRIBUTING.md`, the following CI/CD improvements are needed:
 
 ### Frontend (client/)
 
-- [ ] Begin implementing core calendar creation UI (select year/month, event input, etc.)
-- [ ] Set up API integration with backend endpoints (e.g., `/calendar`)
+- [✓] Begin implementing core calendar creation UI (select year/month, event input, etc.)
+- [✓] Set up API integration with backend endpoints (e.g., `/calendar`)
 - [ ] Start building GenAI prompt UI and output preview
 - [ ] Verify frontend UI accessibility in Codespaces environment
 
