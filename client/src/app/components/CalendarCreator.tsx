@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Image from "next/image";
 import YearlyCalendarGrid from "./YearlyCalendarGrid";
 import { exportCalendarToPDF } from "../utils/pdfExport";
+import { createCalendar, updateCalendar, deleteCalendar } from "../utils/api";
 
 const currentYear = new Date().getFullYear();
 const months = [
@@ -27,6 +28,9 @@ export default function CalendarCreator() {
   const [events, setEvents] = useState<{ date: string; title: string }[]>([]);
   const [eventInput, setEventInput] = useState({ date: "", title: "" });
   const [backgroundUrl, setBackgroundUrl] = useState<string | undefined>();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [savedCalendarId, setSavedCalendarId] = useState<string | null>(null);
 
   const handleMonthToggle = (month: string) => {
     setSelectedMonths((prev) =>
@@ -74,10 +78,95 @@ export default function CalendarCreator() {
     URL.revokeObjectURL(url);
   };
 
+  const handleSaveCalendar = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const calendarData = {
+        year,
+        selectedMonths,
+        events,
+        backgroundUrl,
+      };
+
+      if (savedCalendarId) {
+        const updated = await updateCalendar(savedCalendarId, calendarData);
+        setSavedCalendarId(updated.id);
+      } else {
+        const created = await createCalendar(calendarData);
+        setSavedCalendarId(created.id);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save calendar");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteCalendar = async () => {
+    if (!savedCalendarId) return;
+
+    setIsLoading(true);
+    setError(null);
+    try {
+      await deleteCalendar(savedCalendarId);
+      setSavedCalendarId(null);
+      // Reset form to initial state
+      setYear(currentYear);
+      setSelectedMonths([months[0]]);
+      setEvents([]);
+      setEventInput({ date: "", title: "" });
+      setBackgroundUrl(undefined);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to delete calendar"
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <div style={{ maxWidth: 800, margin: "0 auto", padding: 24 }}>
-      <h2>Create Your Calendar</h2>
-      <hr style={{ margin: "16px 0" }} />
+    <div className="max-w-4xl mx-auto p-4 space-y-6">
+      {error && (
+        <div
+          className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative"
+          role="alert"
+        >
+          <span className="block sm:inline">{error}</span>
+        </div>
+      )}
+
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">Create Your Calendar</h1>
+        <div className="space-x-4">
+          <button
+            onClick={handleSaveCalendar}
+            disabled={isLoading}
+            className={`px-4 py-2 rounded ${
+              isLoading
+                ? "bg-gray-300 cursor-not-allowed"
+                : "bg-blue-500 hover:bg-blue-600 text-white"
+            }`}
+          >
+            {isLoading
+              ? "Saving..."
+              : savedCalendarId
+              ? "Update Calendar"
+              : "Save Calendar"}
+          </button>
+          {savedCalendarId && (
+            <button
+              onClick={handleDeleteCalendar}
+              disabled={isLoading}
+              className="px-4 py-2 rounded bg-red-500 hover:bg-red-600 text-white"
+            >
+              Delete Calendar
+            </button>
+          )}
+        </div>
+      </div>
+
       <div style={{ marginBottom: 16 }}>
         <label htmlFor="calendar-year">
           <strong>Year:</strong>
