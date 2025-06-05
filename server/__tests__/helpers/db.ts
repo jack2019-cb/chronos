@@ -12,14 +12,15 @@ export async function cleanupDatabase() {
     .map(({ tablename }) => tablename)
     .filter((name) => name !== "_prisma_migrations");
 
-  try {
-    for (const table of tables) {
+  for (const table of tables) {
+    try {
       await prisma.$executeRawUnsafe(
         `TRUNCATE TABLE "public"."${table}" CASCADE;`
       );
+    } catch (error) {
+      console.error(`Error truncating table ${table}:`, error);
+      throw error; // Make test fail if cleanup fails
     }
-  } catch (error) {
-    console.log({ error });
   }
 }
 
