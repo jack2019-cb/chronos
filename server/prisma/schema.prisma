@@ -9,10 +9,13 @@ datasource db {
 
 model Calendar {
   id            String   @id @default(uuid())
+  name          String   // Project name
+  description   String?  // Optional project description
   year          Int
   selectedMonths String[]
   events        Event[]
   backgroundUrl String?
+  settings      Json?    // Theme, design, and other project settings
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
