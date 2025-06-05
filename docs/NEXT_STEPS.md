@@ -83,6 +83,9 @@ As documented in `CONTRIBUTING.md`, the following CI/CD improvements are needed:
   - [ ] Integrate with external calendar services
   - [ ] Add project save/load functionality
   - [ ] Implement GenAI integration for themes
+  - [ ] Improve test coverage:
+    - [ ] Cover error handling in `lib/errors.ts` (current: 60%)
+    - [ ] Complete calendar route coverage in `routes/calendar.ts` (current: 82.5%)
 
 - [✓] Complete TypeScript migration for calendar API
 - [ ] Implement authentication and user/project persistence
