@@ -7,4 +7,7 @@ module.exports = {
   coverageDirectory: "coverage",
   coverageReporters: ["text", "lcov"],
   coveragePathIgnorePatterns: ["/node_modules/", "/__tests__/"],
+  moduleNameMapper: {
+    "^@shared/(.*)$": "<rootDir>/../shared/$1",
+  },
 };
