@@ -216,26 +216,46 @@ router.delete("/:id", async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
 
   try {
-    // First check if calendar exists
     const calendar = await prisma.calendar.findUnique({
       where: { id },
+      include: { events: true },
     });
 
     if (!calendar) {
       throw new CalendarError("Calendar not found", 404);
     }
 
-    // Delete events first, then calendar using a transaction
-    await prisma.$transaction([
-      prisma.event.deleteMany({
-        where: { calendarId: id },
-      }),
-      prisma.calendar.delete({
-        where: { id },
-      }),
-    ]);
+    // Delete events and calendar in a transaction
+    try {
+      await prisma.$transaction(async (tx) => {
+        // Delete all events first
+        await tx.event.deleteMany({
+          where: { calendarId: id },
+        });
 
-    res.status(204).send();
+        // Then delete the calendar
+        await tx.calendar.delete({
+          where: { id },
+        });
+      });
+
+      // Verify deletion
+      const verifyDeleted = await prisma.calendar.findUnique({
+        where: { id },
+      });
+
+      if (verifyDeleted) {
+        throw new CalendarError("Failed to delete calendar", 500);
+      }
+
+      res.status(204).send();
+    } catch (txError) {
+      throw new CalendarError(
+        "Transaction failed while deleting calendar",
+        500,
+        { error: txError instanceof Error ? txError.message : "Unknown error" }
+      );
+    }
   } catch (error) {
     handleDatabaseError(error, res);
   }
