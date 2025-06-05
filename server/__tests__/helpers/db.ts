@@ -28,9 +28,11 @@ export async function createTestCalendar(data: {
   selectedMonths: string[];
   events?: { date: string; title: string }[];
   backgroundUrl?: string;
+  name?: string; // allow override
 }) {
   return prisma.calendar.create({
     data: {
+      name: data.name || `Test Calendar ${data.year}`,
       year: data.year,
       selectedMonths: data.selectedMonths,
       backgroundUrl: data.backgroundUrl,
