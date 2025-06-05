@@ -52,14 +52,28 @@ export class ProjectManagementService {
    * Create a new calendar project
    */
   async createProject(data: CreateProjectInput) {
-    return prisma.calendar.create({
-      data: {
-        ...data,
-        settings: (data.settings as Prisma.InputJsonValue) || {},
-      },
-      include: {
-        events: true,
-      },
+    return prisma.$transaction(async (tx) => {
+      const project = await tx.calendar.create({
+        data: {
+          ...data,
+          settings: (data.settings as Prisma.InputJsonValue) || {},
+        },
+        include: {
+          events: true,
+        },
+      });
+
+      // Verify project was created
+      const verifyProject = await tx.calendar.findUnique({
+        where: { id: project.id },
+        include: { events: true },
+      });
+
+      if (!verifyProject) {
+        throw new BadRequestError("Failed to create project");
+      }
+
+      return verifyProject;
     });
   }
 
@@ -85,12 +99,15 @@ export class ProjectManagementService {
    * List all calendar projects
    */
   async listProjects() {
-    return prisma.calendar.findMany({
+    const projects = await prisma.calendar.findMany({
       orderBy: { updatedAt: "desc" },
       include: {
         events: true,
       },
     });
+
+    // Return empty array if no projects
+    return projects || [];
   }
 
   /**
@@ -98,28 +115,42 @@ export class ProjectManagementService {
    */
   async updateProject(data: UpdateProjectInput) {
     const { id, ...updateData } = data;
+    const existingProject = await this.getProject(id);
 
-    // Verify project exists
-    const existing = await this.getProject(id);
-
-    // Handle settings update
-    let newSettings: Prisma.InputJsonValue = existing.settings || {};
-    if (updateData.settings) {
-      newSettings = {
-        ...(typeof existing.settings === "object" ? existing.settings : {}),
-        ...updateData.settings,
-      };
+    // Only include fields that are actually provided
+    const updateFields: any = {};
+    if (updateData.name !== undefined) updateFields.name = updateData.name;
+    if (updateData.description !== undefined)
+      updateFields.description = updateData.description;
+    if (updateData.year !== undefined) updateFields.year = updateData.year;
+    if (updateData.selectedMonths !== undefined)
+      updateFields.selectedMonths = updateData.selectedMonths;
+    if (updateData.backgroundUrl !== undefined)
+      updateFields.backgroundUrl = updateData.backgroundUrl;
+    if (updateData.settings !== undefined) {
+      updateFields.settings = updateData.settings as Prisma.InputJsonValue;
     }
 
-    return prisma.calendar.update({
-      where: { id },
-      data: {
-        ...updateData,
-        settings: newSettings,
-      },
-      include: {
-        events: true,
-      },
+    return prisma.$transaction(async (tx) => {
+      const updated = await tx.calendar.update({
+        where: { id },
+        data: updateFields,
+        include: {
+          events: true,
+        },
+      });
+
+      // Verify update was successful
+      const verifyUpdate = await tx.calendar.findUnique({
+        where: { id },
+        include: { events: true },
+      });
+
+      if (!verifyUpdate) {
+        throw new BadRequestError("Failed to update project");
+      }
+
+      return verifyUpdate;
     });
   }
 
@@ -127,12 +158,21 @@ export class ProjectManagementService {
    * Delete a calendar project
    */
   async deleteProject(id: string) {
-    // Verify project exists
-    await this.getProject(id);
+    const project = await prisma.calendar.findUnique({ where: { id } });
+    if (!project) throw new NotFoundError(`Calendar project ${id} not found`);
 
-    // Delete project and related events (cascade)
-    return prisma.calendar.delete({
-      where: { id },
+    return prisma.$transaction(async (tx) => {
+      await tx.event.deleteMany({ where: { calendarId: id } });
+      try {
+        await tx.calendar.delete({ where: { id } });
+      } catch (err: any) {
+        if (err.code === "P2025") return;
+        throw err;
+      }
+      const verifyDelete = await tx.calendar.findUnique({ where: { id } });
+      if (verifyDelete) {
+        throw new BadRequestError("Failed to delete project");
+      }
     });
   }
 }
