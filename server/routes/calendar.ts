@@ -118,6 +118,7 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
 
     const newCalendar = await prisma.calendar.create({
       data: {
+        name: `Calendar ${year}`, // Default name based on year
         year,
         selectedMonths,
         backgroundUrl,

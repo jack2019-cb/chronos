@@ -80,7 +80,7 @@ As documented in `CONTRIBUTING.md`, the following CI/CD improvements are needed:
   - [✓] Define proper data models for calendar events
   - [✓] Implement CRUD operations for events
   - [✓] Add PDF export endpoint (`/server/routes/calendar.ts`)
-  - [ ] Google Calendar Integration (Phase 1 - Mock Implementation):
+  - [✓] Google Calendar Integration (Phase 1 - Mock Implementation):
 
     1. Create service layer for calendar integration:
        - [✓] Set up `services/googleCalendar.ts` with interface
@@ -102,7 +102,7 @@ As documented in `CONTRIBUTING.md`, the following CI/CD improvements are needed:
        - [✓] Update API documentation
        - [✓] Add integration guide
 
-  - [ ] Google Calendar Integration (Phase 2 - Production):
+  - [ ] Google Calendar Integration (Phase 2 - Production): [Moved to V0.2]
 
     1. Setup Requirements:
        - [ ] Create Google Cloud Project
