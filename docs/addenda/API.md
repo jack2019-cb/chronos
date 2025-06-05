@@ -243,129 +243,120 @@ Tests include both success and error cases for all endpoints.
 
 ## Project Save/Load API
 
-Base URL: `/project`
+Base URL: `/projects`
 
-### Data Model
+### Data Models
+
+#### Project (Calendar)
 
 ```typescript
 interface Project {
-  id?: string;
+  id: string;
   name: string;
-  calendar: {
-    year: number;
-    selectedMonths: string[];
-    backgroundUrl?: string;
-  };
+  description?: string;
+  year: number;
+  selectedMonths: string[];
+  settings?: object;
+  backgroundUrl?: string;
   events: CalendarEvent[];
-  settings: {
-    theme?: string;
-  };
+  createdAt: string;
+  updatedAt: string;
 }
 ```
 
 ### Endpoints
 
-#### GET /project
+#### POST /projects
 
-List all projects
-
-**Response:**
-
-```json
-[{
-  "id": string,
-  "name": string,
-  "createdAt": string,
-  "updatedAt": string
-}]
-```
-
-#### GET /project/:id
-
-Load a specific project
-
-**Response:**
-
-```json
-{
-  "name": string,
-  "calendar": {
-    "year": number,
-    "selectedMonths": string[],
-    "backgroundUrl"?: string
-  },
-  "events": CalendarEvent[],
-  "settings": object
-}
-```
-
-#### POST /project
-
-Create a new project
+Create a new project.
 
 **Request Body:**
 
 ```json
 {
-  "name": string,
-  "calendar": {
-    "year": number,
-    "selectedMonths": string[],
-    "backgroundUrl"?: string
+  "name": "Summer 2025 Calendar",
+  "description": "Family vacation planning",
+  "year": 2025,
+  "selectedMonths": ["June", "July", "August"],
+  "settings": {
+    "theme": { "colors": ["#FF5733", "#33FF57"], "layout": "grid" }
   },
-  "events": CalendarEvent[],
-  "settings": object
+  "backgroundUrl": "https://..."
 }
 ```
 
 **Response:**
 
 ```json
-{
-  "id": string
-}
+Project
 ```
 
-#### PUT /project/:id
+**Status Codes:**
 
-Update an existing project
+- 201: Created
+- 400: Bad Request (missing required fields)
 
-**Request Body:** Same as POST /project
-**Response:** Same as POST /project
+#### GET /projects
 
-#### DELETE /project/:id
+List all projects.
 
-Delete a project
+**Response:**
 
-**Response:** 204 No Content
+```json
+Project[]
+```
 
-### Error Responses
+**Status Codes:**
 
-All error responses follow this format:
+- 200: Success
+
+#### GET /projects/:id
+
+Get a project by ID.
+
+**Response:**
+
+```json
+Project
+```
+
+**Status Codes:**
+
+- 200: Success
+- 404: Not Found
+
+#### PUT /projects/:id
+
+Update a project.
+
+**Request Body:**
 
 ```json
 {
-  "message": string
+  "name": "Updated Name",
+  "settings": { "theme": { "colors": ["#000000"] } }
 }
 ```
 
-### Test Coverage
+**Response:**
 
-The Project API has comprehensive test coverage:
+```json
+Project
+```
 
-- Full CRUD operation testing
-- Error handling for missing/invalid data
-- Integration tests with database
-- Edge cases (e.g., non-existent projects)
+**Status Codes:**
 
-Test cases include:
+- 200: Success
+- 404: Not Found
 
-- Project creation with validation
-- Project loading and data integrity
-- Project listing with metadata
-- Project updates with verification
-- Project deletion with cleanup
-- Error responses for all endpoints
+#### DELETE /projects/:id
+
+Delete a project.
+
+**Status Codes:**
+
+- 204: Deleted
+- 404: Not Found
 
 ## GenAI Integration API (Planned)
 

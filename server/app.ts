@@ -7,6 +7,7 @@ import indexRouter from "./routes/index";
 import usersRouter from "./routes/users";
 import calendarRouter from "./routes/calendar";
 import googleCalendarRouter from "./routes/googleCalendar";
+import projectManagementRouter from "./routes/projectManagement";
 
 const app: Express = express();
 
@@ -26,11 +27,17 @@ app.use("/", indexRouter);
 app.use("/users", usersRouter);
 app.use("/calendar", calendarRouter);
 app.use("/calendar/google", googleCalendarRouter);
+app.use("/projects", projectManagementRouter);
 
 // Error handling
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   console.error(err.stack);
-  res.status(500).json({ error: "Something broke!" });
+  if (err instanceof require("./lib/errors").CalendarError) {
+    const status = (err as any).statusCode || 400;
+    res.status(status).json({ error: err.message });
+  } else {
+    res.status(500).json({ error: "Something broke!" });
+  }
 });
 
 export default app;
