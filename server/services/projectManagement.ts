@@ -1,19 +1,19 @@
-import { Prisma } from '@prisma/client';
-import { CalendarError } from '../lib/errors';
-import { prisma } from '../lib/prisma';
+import { Prisma } from "@prisma/client";
+import { CalendarError } from "../lib/errors";
+import { prisma } from "../lib/prisma";
 
 // Custom error classes
 class NotFoundError extends CalendarError {
   constructor(message: string) {
     super(message, 404);
-    this.name = 'NotFoundError';
+    this.name = "NotFoundError";
   }
 }
 
 class BadRequestError extends CalendarError {
   constructor(message: string) {
     super(message, 400);
-    this.name = 'BadRequestError';
+    this.name = "BadRequestError";
   }
 }
 
@@ -55,7 +55,7 @@ export class ProjectManagementService {
     return prisma.calendar.create({
       data: {
         ...data,
-        settings: data.settings as Prisma.InputJsonValue || {},
+        settings: (data.settings as Prisma.InputJsonValue) || {},
       },
       include: {
         events: true,
@@ -86,7 +86,7 @@ export class ProjectManagementService {
    */
   async listProjects() {
     return prisma.calendar.findMany({
-      orderBy: { updatedAt: 'desc' },
+      orderBy: { updatedAt: "desc" },
       include: {
         events: true,
       },
@@ -100,13 +100,22 @@ export class ProjectManagementService {
     const { id, ...updateData } = data;
 
     // Verify project exists
-    await this.getProject(id);
+    const existing = await this.getProject(id);
+
+    // Handle settings update
+    let newSettings: Prisma.InputJsonValue = existing.settings || {};
+    if (updateData.settings) {
+      newSettings = {
+        ...(typeof existing.settings === "object" ? existing.settings : {}),
+        ...updateData.settings,
+      };
+    }
 
     return prisma.calendar.update({
       where: { id },
       data: {
         ...updateData,
-        settings: updateData.settings as Prisma.InputJsonValue || undefined,
+        settings: newSettings,
       },
       include: {
         events: true,
