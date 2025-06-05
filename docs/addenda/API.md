@@ -471,6 +471,30 @@ Import events into Google Calendar.
 - 401: Unauthorized (missing/invalid token)
 - 500: Server error
 
+### Test Coverage
+
+The Google Calendar integration has comprehensive test coverage:
+
+- Statements: 97.77%
+- Branches: 92.85%
+- Functions: 100%
+- Lines: 97.77%
+
+Tests include:
+
+- OAuth flow (auth and callback)
+- Event listing and importing
+- Error handling for all endpoints
+- Validation edge cases
+- Mock service implementation
+
+Every endpoint is tested for:
+
+- Success cases
+- Authorization errors
+- Validation errors
+- Internal server errors
+
 ## Validation Implementation Status
 
 ### Calendar Endpoints

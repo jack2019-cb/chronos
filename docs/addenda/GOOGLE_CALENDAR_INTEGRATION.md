@@ -123,10 +123,31 @@ Each error response includes a descriptive message:
    npm test -- googleCalendar.test.ts
    ```
 
-2. Integration Tests
-   - Mock responses in development
-   - Real API calls in staging
-   - Error scenarios covered
+2. Test Coverage (Current)
+
+   - Statements: 97.77%
+   - Branches: 92.85%
+   - Functions: 100%
+   - Lines: 97.77%
+
+3. Test Scenarios Covered
+   - OAuth Flow
+     - Successful authorization redirect
+     - Valid/invalid authorization codes
+     - Error handling during auth flow
+   - Event Operations
+     - Listing events with valid token
+     - Importing events validation
+     - Authorization header parsing
+   - Error Handling
+     - Missing/invalid tokens
+     - Malformed request data
+     - Internal server errors
+     - Calendar-specific errors
+   - Edge Cases
+     - Malformed authorization headers
+     - Invalid data structures
+     - Service-level exceptions
 
 ## Future Enhancements
 

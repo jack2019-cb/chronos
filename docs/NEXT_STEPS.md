@@ -128,10 +128,10 @@ As documented in `CONTRIBUTING.md`, the following CI/CD improvements are needed:
       - [ ] Fix DELETE /calendar/:id endpoint
       - [ ] Add validation edge case tests
       - [ ] Cover remaining uncovered lines (270-272)
-    - [🔄] Improve Google Calendar Integration coverage (current: 84.44%)
-      - [ ] Add error condition tests (lines 13-16)
-      - [ ] Improve request validation coverage (lines 36, 54, 66, 78)
-      - [ ] Test mock implementation edge cases
+    - [✓] Improve Google Calendar Integration coverage (current: 97.77%)
+      - [✓] Add error condition tests
+      - [✓] Improve request validation coverage
+      - [✓] Test mock implementation edge cases
 
 ## Current Test Coverage Status
 
