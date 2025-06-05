@@ -245,6 +245,24 @@ Tests include both success and error cases for all endpoints.
 
 Base URL: `/projects`
 
+### Test Coverage
+
+The Project Management API has excellent test coverage:
+
+- Statements: 90.9%
+- Branches: 62.5%
+- Functions: 85.71%
+- Lines: 90.9%
+
+Tests include:
+
+- Project creation with validation
+- Project retrieval and listing
+- Project updates (full and partial)
+- Project deletion with cascade
+- Error handling for all endpoints
+- Edge cases and input validation
+
 ### Data Models
 
 #### Project (Calendar)
@@ -334,7 +352,9 @@ Update a project.
 ```json
 {
   "name": "Updated Name",
-  "settings": { "theme": { "colors": ["#000000"] } }
+  "settings": {
+    "theme": { "colors": ["#000000"] }
+  }
 }
 ```
 
@@ -358,168 +378,40 @@ Delete a project.
 - 204: Deleted
 - 404: Not Found
 
-## GenAI Integration API (Planned)
+### Validation Implementation Status
 
-Base URL: `/genai`
+- POST /projects
 
-- Endpoints for GenAI-powered theme/styling will be documented here as implemented.
-
-## PDF Export Utility (Frontend)
-
-- The frontend provides a utility to export calendar data to PDF.
-- See `client/src/app/utils/pdfExport.ts` for implementation details.
-- Tests for this utility are in `client/__tests__/pdfExport.test.ts`.
-
-## Google Calendar Integration
-
-Base URL: `/calendar/google`
-
-### Data Models
-
-```typescript
-interface GoogleCalendarEvent {
-  id: string;
-  summary: string;
-  description?: string;
-  start: {
-    dateTime: string;
-    timeZone?: string;
-  };
-  end: {
-    dateTime: string;
-    timeZone?: string;
-  };
-}
-```
-
-### Authentication Flow
-
-1. Start OAuth Flow: `GET /calendar/google/auth`
-
-   - Redirects to Google OAuth consent screen (mock in development)
-   - No parameters required
-   - Status Codes:
-     - 302: Redirect to consent screen
-     - 500: Authentication error
-
-2. OAuth Callback: `GET /calendar/google/callback`
-   - Query Parameters:
-     - `code`: Authorization code from Google
-   - Response:
-     ```json
-     {
-       "token": string
-     }
-     ```
-   - Status Codes:
-     - 200: Success
-     - 400: Missing authorization code
-     - 401: Invalid authorization code
-
-### Event Endpoints
-
-#### GET /calendar/google/events
-
-List events from Google Calendar.
-
-**Headers Required:**
-
-- `Authorization: Bearer <token>`
-
-**Response:**
-
-```json
-{
-  "events": GoogleCalendarEvent[]
-}
-```
-
-**Status Codes:**
-
-- 200: Success
-- 401: Unauthorized (missing/invalid token)
-- 500: Server error
-
-#### POST /calendar/google/import
-
-Import events into Google Calendar.
-
-**Headers Required:**
-
-- `Authorization: Bearer <token>`
-
-**Request Body:**
-
-```json
-{
-  "events": GoogleCalendarEvent[]
-}
-```
-
-**Response:**
-
-```json
-{
-  "success": boolean
-}
-```
-
-**Status Codes:**
-
-- 200: Success
-- 400: Invalid request body
-- 401: Unauthorized (missing/invalid token)
-- 500: Server error
-
-### Test Coverage
-
-The Google Calendar integration has comprehensive test coverage:
-
-- Statements: 97.77%
-- Branches: 92.85%
-- Functions: 100%
-- Lines: 97.77%
-
-Tests include:
-
-- OAuth flow (auth and callback)
-- Event listing and importing
-- Error handling for all endpoints
-- Validation edge cases
-- Mock service implementation
-
-Every endpoint is tested for:
-
-- Success cases
-- Authorization errors
-- Validation errors
-- Internal server errors
-
-## Validation Implementation Status
-
-### Calendar Endpoints
-
-- `POST /calendar`
-
-  - ✅ Required field validation
-  - ✅ Date format validation
-  - ✅ Month name validation
+  - ✅ All required fields (name, year, selectedMonths)
+  - ✅ Data type validation
   - ✅ Error response format
 
-- `PUT /calendar/:id`
+- PUT /projects/:id
 
   - ✅ Partial update support
   - ✅ Field validation
   - ✅ Error handling
+  - ✅ Settings object merging
 
-- `DELETE /calendar/:id`
-  - ✅ ID validation
+- DELETE /projects/:id
+  - ✅ Project existence check
   - ✅ 404 handling
-  - 🔄 Cascade delete verification (in progress)
+  - ✅ Cascade delete for events
+  - ✅ Database integrity verification
 
-### Project Management Endpoints
+### Error Handling
 
-- `POST /projects`
-  - ✅ Project creation validation
-  - ✅ Settings validation
-  - ✅ Error handling
+All error responses follow this format:
+
+```json
+{
+  "error": "Error message"
+}
+```
+
+Common error cases:
+
+- Missing required fields
+- Invalid data types
+- Resource not found
+- Database operation failures
