@@ -25,6 +25,24 @@ interface CalendarEvent {
 }
 ```
 
+#### Google Calendar Integration
+
+```typescript
+interface GoogleCalendarEvent {
+  id: string;
+  summary: string;
+  description?: string;
+  start: {
+    dateTime: string;
+    timeZone: string;
+  };
+  end: {
+    dateTime: string;
+    timeZone: string;
+  };
+}
+```
+
 ### Endpoints
 
 #### GET /calendar
@@ -124,6 +142,83 @@ Delete a calendar.
 
 - 204: No Content
 - 404: Calendar not found
+
+### Google Calendar Integration Endpoints
+
+#### GET /calendar/google/auth
+
+Initiates the OAuth flow for Google Calendar integration.
+
+**Response:**
+
+```json
+{
+  "url": string  // Google OAuth authorization URL
+}
+```
+
+#### GET /calendar/google/callback
+
+Handles the OAuth callback from Google.
+
+**Query Parameters:**
+
+- `code`: OAuth authorization code
+- `state`: State parameter for security validation
+
+**Response:**
+
+```json
+{
+  "token": string  // Access token for future requests
+}
+```
+
+#### GET /calendar/google/events
+
+Lists events from the user's Google Calendar.
+
+**Headers:**
+
+- `Authorization`: Bearer token received from callback
+
+**Query Parameters:**
+
+- `timeMin` (optional): Start time (ISO string)
+- `timeMax` (optional): End time (ISO string)
+
+**Response:**
+
+```json
+{
+  "events": GoogleCalendarEvent[]
+}
+```
+
+#### POST /calendar/google/import
+
+Imports events from Google Calendar into ChronosCraft.
+
+**Headers:**
+
+- `Authorization`: Bearer token received from callback
+
+**Request Body:**
+
+```json
+{
+  "events": GoogleCalendarEvent[]
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": boolean,
+  "importedCount": number
+}
+```
 
 ### Error Responses
 
@@ -283,3 +378,104 @@ Base URL: `/genai`
 - The frontend provides a utility to export calendar data to PDF.
 - See `client/src/app/utils/pdfExport.ts` for implementation details.
 - Tests for this utility are in `client/__tests__/pdfExport.test.ts`.
+
+## Google Calendar Integration
+
+Base URL: `/calendar/google`
+
+### Data Models
+
+```typescript
+interface GoogleCalendarEvent {
+  id: string;
+  summary: string;
+  description?: string;
+  start: {
+    dateTime: string;
+    timeZone?: string;
+  };
+  end: {
+    dateTime: string;
+    timeZone?: string;
+  };
+}
+```
+
+### Authentication Flow
+
+1. Start OAuth Flow: `GET /calendar/google/auth`
+
+   - Redirects to Google OAuth consent screen (mock in development)
+   - No parameters required
+   - Status Codes:
+     - 302: Redirect to consent screen
+     - 500: Authentication error
+
+2. OAuth Callback: `GET /calendar/google/callback`
+   - Query Parameters:
+     - `code`: Authorization code from Google
+   - Response:
+     ```json
+     {
+       "token": string
+     }
+     ```
+   - Status Codes:
+     - 200: Success
+     - 400: Missing authorization code
+     - 401: Invalid authorization code
+
+### Event Endpoints
+
+#### GET /calendar/google/events
+
+List events from Google Calendar.
+
+**Headers Required:**
+
+- `Authorization: Bearer <token>`
+
+**Response:**
+
+```json
+{
+  "events": GoogleCalendarEvent[]
+}
+```
+
+**Status Codes:**
+
+- 200: Success
+- 401: Unauthorized (missing/invalid token)
+- 500: Server error
+
+#### POST /calendar/google/import
+
+Import events into Google Calendar.
+
+**Headers Required:**
+
+- `Authorization: Bearer <token>`
+
+**Request Body:**
+
+```json
+{
+  "events": GoogleCalendarEvent[]
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": boolean
+}
+```
+
+**Status Codes:**
+
+- 200: Success
+- 400: Invalid request body
+- 401: Unauthorized (missing/invalid token)
+- 500: Server error
