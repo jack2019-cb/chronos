@@ -123,10 +123,12 @@ As documented in `CONTRIBUTING.md`, the following CI/CD improvements are needed:
   - [ ] Implement GenAI integration for themes
   - [ ] Improve test coverage:
     - [✓] Cover error handling in `lib/errors.ts` (improved from 60% to 100%)
-    - [✓] Improve Project Management API coverage (achieved 90.9%)
-    - [🔄] Complete calendar route coverage (current: 82.5%)
-      - [ ] Fix DELETE /calendar/:id endpoint
-      - [ ] Add validation edge case tests
+    - [✓] Improve Google Calendar Integration coverage (achieved 97.77%)
+    - [🔄] Improve Project Management API coverage (current: ~25%)
+      - [ ] Add route tests (currently 31.25%)
+      - [ ] Add service layer tests (currently 18.18%)
+      - [ ] Cover CRUD operations and error handling
+      - [ ] Add validation edge cases
       - [ ] Cover remaining uncovered lines (270-272)
     - [✓] Improve Google Calendar Integration coverage (current: 97.77%)
       - [✓] Add error condition tests
@@ -196,7 +198,7 @@ _You are ready to continue building out ChronosCraft AI!_
 2. Project Management
    - ✅ Save/load functionality
    - ✅ Settings validation
-   - ✅ Test coverage (90.9%)
+   - 🔄 Test coverage (25%)
 3. Google Calendar Integration
    - ✅ Mock implementation
    - ⏳ Production integration (V0.2)
