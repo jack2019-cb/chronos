@@ -470,3 +470,32 @@ Import events into Google Calendar.
 - 400: Invalid request body
 - 401: Unauthorized (missing/invalid token)
 - 500: Server error
+
+## Validation Implementation Status
+
+### Calendar Endpoints
+
+- `POST /calendar`
+
+  - ✅ Required field validation
+  - ✅ Date format validation
+  - ✅ Month name validation
+  - ✅ Error response format
+
+- `PUT /calendar/:id`
+
+  - ✅ Partial update support
+  - ✅ Field validation
+  - ✅ Error handling
+
+- `DELETE /calendar/:id`
+  - ✅ ID validation
+  - ✅ 404 handling
+  - 🔄 Cascade delete verification (in progress)
+
+### Project Management Endpoints
+
+- `POST /projects`
+  - ✅ Project creation validation
+  - ✅ Settings validation
+  - ✅ Error handling
