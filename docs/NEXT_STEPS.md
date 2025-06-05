@@ -80,7 +80,45 @@ As documented in `CONTRIBUTING.md`, the following CI/CD improvements are needed:
   - [✓] Define proper data models for calendar events
   - [✓] Implement CRUD operations for events
   - [✓] Add PDF export endpoint (`/server/routes/calendar.ts`)
-  - [ ] Integrate with external calendar services
+  - [ ] Google Calendar Integration (Phase 1 - Mock Implementation):
+
+    1. Create service layer for calendar integration:
+       - [✓] Set up `services/googleCalendar.ts` with interface
+       - [✓] Implement mock data provider
+       - [✓] Add integration tests with mock data
+    2. Add new endpoints:
+       - [✓] GET `/calendar/google/auth` (mock OAuth flow)
+       - [✓] GET `/calendar/google/callback` (mock token handling)
+       - [✓] GET `/calendar/google/events` (return mock events)
+       - [✓] POST `/calendar/google/import` (simulate import)
+    3. Error handling:
+       - [✓] Add specific error types for calendar integration
+       - [✓] Implement proper error responses
+    4. Testing:
+       - [✓] Unit tests for service layer
+       - [✓] Integration tests for endpoints
+       - [✓] Error handling tests
+    5. Documentation:
+       - [✓] Update API documentation
+       - [✓] Add integration guide
+
+  - [ ] Google Calendar Integration (Phase 2 - Production):
+
+    1. Setup Requirements:
+       - [ ] Create Google Cloud Project
+       - [ ] Enable Calendar API
+       - [ ] Configure OAuth 2.0 credentials
+       - [ ] Set up OAuth consent screen
+    2. Implementation:
+       - [ ] Real OAuth flow integration
+       - [ ] Token storage and refresh handling
+       - [ ] Real Calendar API integration
+       - [ ] Rate limiting and quota management
+    3. Security:
+       - [ ] Secure credential storage
+       - [ ] Token encryption
+       - [ ] Access scope management
+
   - [ ] Add project save/load functionality
   - [ ] Implement GenAI integration for themes
   - [ ] Improve test coverage:
