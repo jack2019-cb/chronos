@@ -6,6 +6,7 @@ import logger from "morgan";
 import indexRouter from "./routes/index";
 import usersRouter from "./routes/users";
 import calendarRouter from "./routes/calendar";
+import googleCalendarRouter from "./routes/googleCalendar";
 
 const app: Express = express();
 
@@ -24,6 +25,7 @@ app.use(express.static(path.join(__dirname, "public")));
 app.use("/", indexRouter);
 app.use("/users", usersRouter);
 app.use("/calendar", calendarRouter);
+app.use("/calendar/google", googleCalendarRouter);
 
 // Error handling
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
