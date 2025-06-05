@@ -20,16 +20,21 @@
 
 ### Ready to Work On
 
-1. Calendar API Enhancement:
+1. CI/CD Pipeline Enhancement:
 
-   - Next: Implement PDF export endpoint (`/server/routes/calendar.ts`)
-   - Then: Add external calendar service integration
-   - Finally: Implement project save/load functionality
-
-2. CI/CD Pipeline:
    - Current file: `/.github/workflows/ci.yml`
    - Required changes documented in `CONTRIBUTING.md`
-   - Focus on Playwright integration first
+   - Primary focus areas:
+     1. Implement Playwright integration tests
+     2. Add production build verification
+     3. Set up code coverage reporting
+     4. Configure automated deployment workflows
+
+2. Testing Infrastructure:
+   - Expand Playwright integration test coverage
+   - Implement end-to-end test scenarios
+   - Set up performance testing baseline
+   - Add automated accessibility testing
 
 ## Recent Progress (as of 2025-05-27)
 
@@ -119,30 +124,59 @@ As documented in `CONTRIBUTING.md`, the following CI/CD improvements are needed:
        - [ ] Token encryption
        - [ ] Access scope management
 
-  - [ ] Add project save/load functionality
+  - [✓] Add project save/load functionality (Completed: 90.9% test coverage)
   - [ ] Implement GenAI integration for themes
-  - [ ] Improve test coverage:
-    - [✓] Cover error handling in `lib/errors.ts` (improved from 60% to 100%)
-    - [✓] Improve Google Calendar Integration coverage (achieved 97.77%)
-    - [✓] Improve Project Management API coverage (improved from ~25% to 90.9%)
-      - [✓] Add route tests (all endpoints covered)
-      - [✓] Add service layer tests (statements: 90.9%, functions: 85.71%)
-      - [✓] Cover CRUD operations and error handling
-      - [✓] Add validation edge cases
-      - [✓] Address settings object edge cases
-    - [✓] Improve Google Calendar Integration coverage (current: 97.77%)
-      - [✓] Add error condition tests
-      - [✓] Improve request validation coverage
-      - [✓] Test mock implementation edge cases
+  - [ ] Improve Calendar API test coverage (Target: 90%+):
+
+    - [ ] Route Coverage Improvements:
+      - [ ] GET /calendar - Add error handling and edge case tests
+      - [ ] POST /calendar - Add comprehensive validation tests
+      - [ ] PUT /calendar/:id - Add transaction and concurrency tests
+      - [ ] DELETE /calendar/:id - Add cascade deletion tests
+    - [ ] Function Coverage:
+      - [ ] validateCalendarInput - Improve branch coverage (currently 75%)
+      - [ ] handleDatabaseError - Add missing error cases (currently 82%)
+      - [ ] Event validation - Add edge cases (currently 85%)
+    - [ ] Integration Tests:
+      - [ ] Test concurrent modifications
+      - [ ] Test large data sets
+      - [ ] Test date format validations
+      - [ ] Test transaction rollbacks
+      - [ ] Test background URL validations
+      - [ ] Test event title validations
+    - [ ] Error Handling:
+      - [ ] Test middleware error handling
+      - [ ] Test database connection errors
+      - [ ] Test validation error scenarios
+      - [ ] Test transaction failures
+
+  - [✓] Other Component Coverage (Maintained at 90%+):
+    - [✓] Error handling in `lib/errors.ts` (100%)
+    - [✓] Google Calendar Integration (97.77%)
+    - [✓] Project Management API (90.9%)
 
 ## Current Test Coverage Status
 
-Overall backend coverage: 88.67% (up from 87.35%)
+Target: Minimum 90% coverage across all components
 
-- Statements: 88.67%
-- Branches: 75.58%
-- Functions: 91.18%
-- Lines: 88.67%
+Current Status:
+
+- Overall backend: 88.67% (up from 87.35%, target: 90%+)
+  - Statements: 88.67%
+  - Branches: 75.58%
+  - Functions: 91.18%
+  - Lines: 88.67%
+
+Priority Improvements Needed:
+
+1. Calendar API: 82.5% → 90% (highest priority)
+2. Overall Backend: 88.67% → 90%
+
+Components at Target:
+
+- Project Management API: 90.9% ✓
+- Google Calendar Integration: 97.77% ✓
+- Error Handling: 100% ✓
 
 - [✓] Complete TypeScript migration for calendar API
 - [ ] Implement authentication and user/project persistence

@@ -1,12 +1,7 @@
 import request from "supertest";
-import express from "express";
-import projectManagementRouter from "../routes/projectManagement";
+import app from "../app";
 import { cleanupDatabase } from "./helpers/db";
 import { prisma } from "../lib/prisma";
-
-const app = express();
-app.use(express.json());
-app.use("/projects", projectManagementRouter);
 
 describe("Project Management API", () => {
   beforeEach(async () => {
