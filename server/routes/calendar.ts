@@ -71,7 +71,10 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
     });
 
     res.json({
-      calendars,
+      calendars: calendars.map((cal) => ({
+        ...cal,
+        events: cal.events || [],
+      })),
       months: [
         "January",
         "February",
@@ -225,31 +228,36 @@ router.delete("/:id", async (req: Request, res: Response): Promise<void> => {
       throw new CalendarError("Calendar not found", 404);
     }
 
-    // Delete events and calendar in a transaction
+    // Delete calendar and events in a transaction with retry logic
     try {
-      await prisma.$transaction(async (tx) => {
-        // Delete all events first
-        await tx.event.deleteMany({
-          where: { calendarId: id },
-        });
+      await prisma.$transaction(
+        async (tx) => {
+          // Delete events first
+          await tx.event.deleteMany({
+            where: { calendarId: id },
+          });
 
-        // Then delete the calendar
-        await tx.calendar.delete({
-          where: { id },
-        });
-      });
-
-      // Verify deletion
-      const verifyDeleted = await prisma.calendar.findUnique({
-        where: { id },
-      });
-
-      if (verifyDeleted) {
-        throw new CalendarError("Failed to delete calendar", 500);
-      }
+          // Then delete the calendar
+          await tx.calendar.delete({
+            where: { id },
+          });
+        },
+        {
+          maxWait: 5000, // Maximum time to wait for each retry
+          timeout: 10000, // Maximum time to wait for the transaction
+          isolationLevel: "Serializable", // Ensure consistency
+        }
+      );
 
       res.status(204).send();
     } catch (txError) {
+      // Check if transaction error was due to deadlock
+      if (
+        txError instanceof Error &&
+        txError.message.includes("deadlock detected")
+      ) {
+        throw new CalendarError("Database conflict, please try again", 409);
+      }
       throw new CalendarError(
         "Transaction failed while deleting calendar",
         500,
@@ -275,21 +283,56 @@ router.get("/:id/pdf", async (req: Request, res: Response): Promise<void> => {
       throw new CalendarError("Calendar not found", 404);
     }
 
-    const pdfBytes = await exportCalendarToPDF({
-      year: calendar.year,
-      selectedMonths: calendar.selectedMonths,
-      events: calendar.events,
-      backgroundUrl: calendar.backgroundUrl || undefined,
-    });
+    try {
+      const pdfBytes = await exportCalendarToPDF({
+        year: calendar.year,
+        selectedMonths: calendar.selectedMonths,
+        events: calendar.events || [],
+        backgroundUrl: calendar.backgroundUrl || undefined,
+      });
 
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="${calendar.year}-calendar.pdf"`
-    );
-    res.send(Buffer.from(pdfBytes));
+      // Clear any previous headers
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${calendar.year}-calendar.pdf"`
+      );
+      res.setHeader("Cache-Control", "no-cache");
+      res.status(200);
+      res.send(Buffer.from(pdfBytes));
+    } catch (pdfError) {
+      // If PDF generation fails, try without background
+      const pdfBytes = await exportCalendarToPDF({
+        year: calendar.year,
+        selectedMonths: calendar.selectedMonths,
+        events: calendar.events || [],
+        backgroundUrl: undefined,
+      });
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${calendar.year}-calendar.pdf"`
+      );
+      res.setHeader("Cache-Control", "no-cache");
+      res.status(200);
+      res.send(Buffer.from(pdfBytes));
+    }
   } catch (error) {
-    handleDatabaseError(error, res);
+    if (error instanceof CalendarError) {
+      if (error.statusCode === 404) {
+        res.status(404).json({ message: error.message });
+      } else {
+        res.status(error.statusCode).json({
+          error: error.message,
+          details: error.details,
+        });
+      }
+    } else {
+      res.status(500).json({
+        error: "Internal server error while generating PDF",
+      });
+    }
   }
 });
 

@@ -11,7 +11,7 @@ export class CalendarError extends Error {
     public details?: any
   ) {
     super(message);
-    this.name = "CalendarError";
+    this.name = this.constructor.name;
   }
 }
 
