@@ -122,8 +122,25 @@ As documented in `CONTRIBUTING.md`, the following CI/CD improvements are needed:
   - [ ] Add project save/load functionality
   - [ ] Implement GenAI integration for themes
   - [ ] Improve test coverage:
-    - [ ] Cover error handling in `lib/errors.ts` (current: 60%)
-    - [ ] Complete calendar route coverage in `routes/calendar.ts` (current: 82.5%)
+    - [✓] Cover error handling in `lib/errors.ts` (improved from 60% to 100%)
+    - [✓] Improve Project Management API coverage (achieved 90.9%)
+    - [🔄] Complete calendar route coverage (current: 82.5%)
+      - [ ] Fix DELETE /calendar/:id endpoint
+      - [ ] Add validation edge case tests
+      - [ ] Cover remaining uncovered lines (270-272)
+    - [🔄] Improve Google Calendar Integration coverage (current: 84.44%)
+      - [ ] Add error condition tests (lines 13-16)
+      - [ ] Improve request validation coverage (lines 36, 54, 66, 78)
+      - [ ] Test mock implementation edge cases
+
+## Current Test Coverage Status
+
+Overall backend coverage: 88.67% (up from 87.35%)
+
+- Statements: 88.67%
+- Branches: 75.58%
+- Functions: 91.18%
+- Lines: 88.67%
 
 - [✓] Complete TypeScript migration for calendar API
 - [ ] Implement authentication and user/project persistence
