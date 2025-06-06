@@ -19,9 +19,10 @@ Historical issues and completed work can be found in the archive directory (e.g.
 
    a. `__tests__/validation.test.ts`:
 
-   - Status: ⏳ In Progress
+   - Status: ✅ FIXED (2025-06-06)
    - Issue: Newly created test for validateCalendarInput
-   - Next Step: Verify test runs in isolation
+   - Resolution: Test passes in isolation (3 tests passed)
+   - Coverage Note: Low coverage in calendar.ts (16.03%), but validation-specific code works
 
    b. `__tests__/calendar.test.ts`:
 
