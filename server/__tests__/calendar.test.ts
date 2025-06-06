@@ -61,6 +61,13 @@ describe("Calendar API", () => {
       events: [{ date: "2025-01-01", title: "Test Event" }],
     });
 
+    // Verify the calendar was created
+    const verifyCreated = await prisma.calendar.findUnique({
+      where: { id: testCalendar.id },
+      include: { events: true },
+    });
+    expect(verifyCreated).toBeTruthy();
+
     const response = await request(app).get(`/calendar?id=${testCalendar.id}`);
     expect(response.status).toBe(200);
     expect(response.body).toHaveProperty("id", testCalendar.id);
