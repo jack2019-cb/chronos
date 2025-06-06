@@ -26,9 +26,12 @@ Historical issues and completed work can be found in the archive directory (e.g.
 
    b. `__tests__/calendar.test.ts`:
 
-   - Status: 🔄 Updated
-   - Issue: Converted from JS to TS
-   - Next Step: Verify test runs in isolation
+   - Status: ⚠️ PARTIALLY FIXED (2025-06-06)
+   - Issue: 40/41 tests passing
+   - Remaining Issue: DELETE endpoint test failing
+     - Expected: 500 Internal Server Error
+     - Actual: 204 No Content
+   - Next Step: Fix error handling in delete endpoint
 
    c. `__tests__/projectManagement.test.ts`:
 
