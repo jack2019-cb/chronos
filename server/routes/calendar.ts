@@ -423,4 +423,5 @@ router.get("/:id/pdf", async (req: Request, res: Response): Promise<void> => {
   }
 });
 
-export = router;
+export { validateCalendarInput };
+export default router;
