@@ -2,14 +2,14 @@
 
 > **Note:** For detailed issues, API reference, and historical notes, see `/docs/addenda/`.
 
-## Current Status (2025-06-04)
+## Current Status (2025-06-06)
 
 ### Active Branch: feature/calendar-api
 
 - Location: `/workspaces/caramel`
-- Last Completed: Database integration with Prisma, including CRUD operations and tests
-- Currently Working: Documentation updates and preparing for branch merge
-- Next Action: PDF export endpoint implementation
+- Last Completed: Fixed module export issues in calendar API router
+- Currently Working: Resolving test suite issues (6/8 failing tests)
+- Next Action: Address test suite hanging issues following one-issue-at-a-time approach
 
 ### Key Files Modified
 
@@ -52,6 +52,8 @@
 - Added comprehensive error handling for calendar API
 
 ## Immediate Priority
+
+### Both Client and Server test failing
 
 ### CI/CD Enhancements
 
