@@ -314,11 +314,12 @@ router.delete("/:id", async (req: Request, res: Response): Promise<void> => {
     }
 
     // Delete calendar and events in a transaction
-    await prisma.$transaction(
-      async (tx) => {
-        try {
-          // Delete events first
-          await tx.event.deleteMany({
+    try {
+      await prisma.$transaction(
+        async (tx) => {
+          try {
+            // Delete events first
+            await tx.event.deleteMany({
             where: { calendarId: id },
           });
 
