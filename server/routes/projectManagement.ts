@@ -31,6 +31,7 @@ router.get("/:id", async (req, res, next) => {
 router.get("/", async (req, res, next) => {
   try {
     const projects = await projectManagementService.listProjects();
+    // Make sure we're returning the array directly
     res.json(projects);
   } catch (error) {
     next(error);
