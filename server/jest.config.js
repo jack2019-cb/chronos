@@ -10,4 +10,6 @@ module.exports = {
   moduleNameMapper: {
     "^@shared/(.*)$": "<rootDir>/../shared/$1",
   },
+  // Enforce serial test execution for integration tests
+  maxWorkers: 1,
 };
