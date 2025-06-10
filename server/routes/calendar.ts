@@ -313,40 +313,48 @@ router.delete("/:id", async (req: Request, res: Response): Promise<void> => {
       throw new CalendarError("Calendar not found", 404);
     }
 
-    // Delete calendar and events in a transaction
-    await prisma.$transaction(
-      async (tx) => {
-        // Delete events first
-        await tx.event.deleteMany({
-          where: { calendarId: id },
-        });
+    try {
+      // Delete calendar and events in a transaction
+      await prisma.$transaction(
+        async (tx) => {
+          // Delete events first
+          await tx.event.deleteMany({
+            where: { calendarId: id },
+          });
 
-        // Then delete the calendar
-        await tx.calendar.delete({
-          where: { id },
-        });
+          // Then delete the calendar
+          await tx.calendar.delete({
+            where: { id },
+          });
 
-        // Verify deletion
-        const verifyDelete = await tx.calendar.findUnique({
-          where: { id },
-          include: { events: true },
-        });
+          // Verify deletion
+          const verifyDelete = await tx.calendar.findUnique({
+            where: { id },
+            include: { events: true },
+          });
 
-        if (verifyDelete) {
-          throw new CalendarError("Failed to delete calendar", 500);
+          if (verifyDelete) {
+            throw new CalendarError("Failed to delete calendar", 500);
+          }
+        },
+        {
+          maxWait: 5000,
+          timeout: 10000,
+          isolationLevel: "Serializable",
         }
-      },
-      {
-        maxWait: 5000,
-        timeout: 10000,
-        isolationLevel: "Serializable",
-      }
-    );
+      );
 
-    // Successfully deleted
-    res.status(204).send();
+      // Only send success if we get here (no transaction errors)
+      res.status(204).send();
+    } catch (txError) {
+      // Any transaction error (including disconnection) returns 500
+      res
+        .status(500)
+        .json({ message: "Transaction failed while deleting calendar" });
+      return;
+    }
   } catch (error) {
-    // Handle specific transaction errors
+    // Handle specific non-transaction errors
     if (error instanceof CalendarError) {
       if (error.message.includes("deadlock detected")) {
         res
@@ -364,7 +372,7 @@ router.delete("/:id", async (req: Request, res: Response): Promise<void> => {
 });
 
 // GET /calendar/:id/pdf - Export calendar to PDF
-router.get("/:id/pdf", async (req: Request, res: Response): Promise<void> => {
+router.get("/:id/pdf", async (req: Request, res: Response): Promise<any> => {
   const { id } = req.params;
 
   try {

@@ -403,8 +403,11 @@ describe("Calendar API", () => {
         },
       });
 
-      // Force a transaction failure by disconnecting the database
-      await prisma.$disconnect();
+      // Mock prisma.$transaction to throw an error
+      const originalTransaction = prisma.$transaction;
+      prisma.$transaction = jest.fn().mockImplementation(() => {
+        throw new Error("Simulated database failure");
+      });
 
       const response = await request(app)
         .delete(`/calendar/${testCalendar.id}`)
@@ -414,8 +417,8 @@ describe("Calendar API", () => {
         "Transaction failed while deleting calendar"
       );
 
-      // Reconnect for cleanup
-      await prisma.$connect();
+      // Restore the original transaction method
+      prisma.$transaction = originalTransaction;
     });
   });
 });
