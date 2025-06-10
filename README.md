@@ -1,4 +1,4 @@
-# caramel
+# vanilla
 
 Home to ChronosCraft AI
 
