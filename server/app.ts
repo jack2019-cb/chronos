@@ -1,4 +1,5 @@
 import express, { Express, Request, Response, NextFunction } from "express";
+import createError from "http-errors";
 import path from "path";
 import cookieParser from "cookie-parser";
 import logger from "morgan";
@@ -22,12 +23,22 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
 
+// Health check for CI
+app.get("/health", (req: Request, res: Response) => {
+  res.status(200).json({ status: "ok" });
+});
+
 // Routes
 app.use("/", indexRouter);
 app.use("/users", usersRouter);
 app.use("/calendar", calendarRouter);
 app.use("/calendar/google", googleCalendarRouter);
 app.use("/projects", projectManagementRouter);
+
+// catch 404 and forward to error handler
+app.use(function (req: Request, res: Response, next: NextFunction) {
+  next(createError(404));
+});
 
 // Error handling
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
