@@ -3,7 +3,7 @@
 > **Reminder:** Keep `NEXT_STEPS.md` up-to-date. Remove completed items and past notices so it always reflects the current and next actionable work.
 
 This document tracks current and upcoming challenges for the ChronosCraft project.
-Historical issues and completed work can be found in the archive directory (e.g., `archive/issues-2025-05.md`).
+Historical issues and completed work can be found in the archive directory (e.g., `archive/issues-2025-06-05.md`).
 
 ## Active Issues
 
@@ -25,8 +25,11 @@ Historical issues and completed work can be found in the archive directory (e.g.
 
 2. **Add automated linting to CI**
 
-   - Integrate ESLint check into GitHub Actions
-   - Fail CI if lint errors are found
+   - Integrate ESLint for server ✓
+   - Add lint script to server package.json ✓
+   - Add lint steps to CI workflow ✓
+   - Client already has Next.js lint support ✓
+   - Testing: Need to verify lint failure fails CI build
    - Timebox: 1 hour
 
 3. **Implement production build verification in CI**
