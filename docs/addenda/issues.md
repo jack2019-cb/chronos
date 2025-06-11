@@ -3,7 +3,7 @@
 > **Reminder:** Keep `NEXT_STEPS.md` up-to-date. Remove completed items and past notices so it always reflects the current and next actionable work.
 
 This document tracks current and upcoming challenges for the ChronosCraft project.
-Historical issues and completed work can be found in the archive directory (e.g., `archive/issues-2025-06-05.md`).
+Historical issues and completed work can be found in the archive directory (e.g., `archive/issues-2025-05.md`).
 
 ## Active Issues
 
@@ -13,7 +13,9 @@ Historical issues and completed work can be found in the archive directory (e.g.
 
    - Add Playwright test run to GitHub Actions workflow
    - Ensure Playwright tests run on PRs and main branch
-   - **Note:** For efficiency in CI, limit to Chromium browser only (can expand later if needed)
+   - Decision (2025-06-11): Implementing full browser support (Chromium, Firefox, WebKit)
+     - Rationale: Development-only requirement, sufficient space available (~706MB total)
+     - Benefits: Complete cross-browser testing coverage
    - Timebox: 1 hour
 
 2. **Add automated linting to CI**

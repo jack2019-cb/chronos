@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "test": "jest",
+    "test:e2e": "playwright test",
     "postinstall": "npx playwright install --with-deps chromium"
   },
   "dependencies": {
