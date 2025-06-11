@@ -5,6 +5,11 @@ on:
     branches: [main, develop, feature/*]
   pull_request:
 
+env:
+  NODE_ENV: test
+  PORT: 3000
+  API_PORT: 3001
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
@@ -35,16 +40,39 @@ jobs:
         run: cd client && npx playwright install --with-deps
       - name: Build Next.js app
         run: cd client && npm run build
-      - name: Start server and client for integration tests
+
+      # Start Services with Health Checks
+      - name: Start backend server
         run: |
-          cd server && npm start &
-          cd client && npm start &
-          sleep 10
+          cd server
+          npm start &
+          echo $! > ../server.pid
+          echo "Waiting for server to be ready..."
+          timeout 30s bash -c 'until curl -s http://localhost:${{ env.API_PORT }}/health; do sleep 2; done'
+
+      - name: Start frontend
+        run: |
+          cd client
+          npm start &
+          echo $! > ../client.pid
+          echo "Waiting for frontend to be ready..."
+          timeout 30s bash -c 'until curl -s http://localhost:${{ env.PORT }}; do sleep 2; done'
+
       - name: Run Playwright Tests
         run: cd client && npm run test:e2e
-      - uses: actions/upload-artifact@v4
+
+      # Always upload test reports
+      - name: Upload Playwright Report
         if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: playwright-report
           path: client/playwright-report/
           retention-days: 30
+
+      # Cleanup
+      - name: Stop services
+        if: always()
+        run: |
+          kill $(cat server.pid) || true
+          kill $(cat client.pid) || true
