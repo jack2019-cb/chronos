@@ -23,15 +23,19 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
 
-      # Server Setup and Tests
+      # Server Setup, Lint, and Tests
       - name: Install server dependencies
         run: cd server && npm ci
+      - name: Lint server code
+        run: cd server && npm run lint
       - name: Run backend tests
         run: cd server && npm test
 
-      # Client Setup and Tests
+      # Client Setup, Lint, and Tests
       - name: Install client dependencies
         run: cd client && npm ci
+      - name: Lint client code
+        run: cd client && npm run lint
       - name: Run frontend tests
         run: cd client && npm test
 
@@ -40,7 +44,7 @@ jobs:
         run: cd client && npx playwright install --with-deps
       - name: Build Next.js app
         run: cd client && npm run build
-
+      
       # Start Services with Health Checks
       - name: Start backend server
         run: |
@@ -49,7 +53,7 @@ jobs:
           echo $! > ../server.pid
           echo "Waiting for server to be ready..."
           timeout 30s bash -c 'until curl -s http://localhost:${{ env.API_PORT }}/health; do sleep 2; done'
-
+      
       - name: Start frontend
         run: |
           cd client
@@ -60,7 +64,7 @@ jobs:
 
       - name: Run Playwright Tests
         run: cd client && npm run test:e2e
-
+      
       # Always upload test reports
       - name: Upload Playwright Report
         if: always()
