@@ -13,6 +13,7 @@ Historical issues and completed work can be found in the archive directory (e.g.
 
    - Add Playwright test run to GitHub Actions workflow
    - Ensure Playwright tests run on PRs and main branch
+   - **Note:** For efficiency in CI, limit to Chromium browser only (can expand later if needed)
    - Timebox: 1 hour
 
 2. **Add automated linting to CI**

@@ -6,11 +6,9 @@
 
 ## Current Status (2025-06-10)
 
-### Active Branch: feature/calendar-api
+### Active Branch: feature/ci-cd
 
-- Location: `/workspaces/caramel`
-- Last Completed: **All server and client tests passing**
-- Currently Working: Test suite is stable and robust, including error handling for database failures
+- Location: `/chronos`
 - Next Action: CI/CD and feature enhancements
 
 ### Key Files Modified
