@@ -5,7 +5,10 @@ export interface ExportToPDFOptions {
   backgroundUrl?: string;
 }
 
+// TODO: Implement PDF export logic (Phase 2)
+// Parameters are defined but implementation is deferred
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function exportToPDF(options: ExportToPDFOptions) {
-  // TODO: Implement PDF export logic
-  // Placeholder: does nothing for now
+  // Placeholder: Implementation coming in Phase 2
+  return Promise.resolve();
 }
