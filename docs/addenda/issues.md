@@ -40,8 +40,17 @@ Historical issues and completed work can be found in the archive directory (e.g.
 
 4. **Set up code coverage reporting**
 
-   - Integrate Jest coverage reporting in CI
-   - Upload coverage artifact for review
+   - Configure Jest coverage:
+     - Update Jest config for both client and server
+     - Set appropriate coverage thresholds
+     - Ensure coverage output format is CI-friendly
+   - Integrate with CI:
+     - Add coverage generation to test runs
+     - Configure artifact upload
+     - Set up path mappings for reports
+   - Documentation:
+     - Add coverage badge to README
+     - Document coverage requirements
    - Timebox: 1 hour
 
 5. **Create deployment workflow for staging**
