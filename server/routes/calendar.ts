@@ -314,12 +314,11 @@ router.delete("/:id", async (req: Request, res: Response): Promise<void> => {
     }
 
     // Delete calendar and events in a transaction
-    try {
-      await prisma.$transaction(
-        async (tx) => {
-          try {
-            // Delete events first
-            await tx.event.deleteMany({
+    await prisma.$transaction(
+      async (tx) => {
+        try {
+          // Delete events first
+          await tx.event.deleteMany({
             where: { calendarId: id },
           });
 
@@ -385,39 +384,52 @@ router.get("/:id/pdf", async (req: Request, res: Response): Promise<void> => {
     });
 
     if (!calendar) {
-      throw new CalendarError("Calendar not found", 404);
+      res.status(404).json({ message: "Calendar not found" });
+      return;
     }
 
     try {
+      // First attempt - with background
       const pdfBytes = await exportCalendarToPDF({
         year: calendar.year,
         selectedMonths: calendar.selectedMonths,
-        events: calendar.events || [],
-        backgroundUrl: calendar.backgroundUrl || undefined,
+        events: calendar.events,
+        backgroundUrl: calendar.backgroundUrl ?? undefined,
       });
-
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename="${calendar.year}-calendar.pdf"`
+        `attachment; filename=\"calendar-${id}.pdf\"`
       );
       res.setHeader("Cache-Control", "no-cache");
       res.send(Buffer.from(pdfBytes));
+      return;
     } catch (pdfError) {
-      // If PDF generation fails, try without background
-      const pdfBytes = await exportCalendarToPDF({
-        year: calendar.year,
-        selectedMonths: calendar.selectedMonths,
-        events: calendar.events || [],
-      });
-
-      res.setHeader("Content-Type", "application/pdf");
-      res.setHeader(
-        "Content-Disposition",
-        `attachment; filename="${calendar.year}-calendar.pdf"`
-      );
-      res.setHeader("Cache-Control", "no-cache");
-      res.send(Buffer.from(pdfBytes));
+      // If first attempt fails, try without background
+      try {
+        const pdfBytes = await exportCalendarToPDF({
+          year: calendar.year,
+          selectedMonths: calendar.selectedMonths,
+          events: calendar.events,
+        });
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename=\"calendar-${id}.pdf\"`
+        );
+        res.setHeader("Cache-Control", "no-cache");
+        res.send(Buffer.from(pdfBytes));
+        return;
+      } catch (retryError) {
+        // If both attempts fail, return error
+        res.status(500).json({
+          message: "Failed to generate PDF",
+          details:
+            retryError instanceof Error
+              ? retryError.message
+              : String(retryError),
+        });
+      }
     }
   } catch (error) {
     handleDatabaseError(error, res);
