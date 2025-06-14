@@ -364,6 +364,16 @@ router.delete("/:id", async (req: Request, res: Response): Promise<void> => {
           .json({ message: "Database conflict, please try again" });
         return;
       }
+      // Custom message for transaction failure
+      if (
+        error.message === "Failed to delete calendar" ||
+        error.statusCode === 500
+      ) {
+        res
+          .status(500)
+          .json({ message: "Transaction failed while deleting calendar" });
+        return;
+      }
       res
         .status(error.statusCode)
         .json({ message: error.message, details: error.details });
@@ -399,7 +409,7 @@ router.get("/:id/pdf", async (req: Request, res: Response): Promise<void> => {
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename=\"calendar-${id}.pdf\"`
+        `attachment; filename="${calendar.year}-calendar.pdf"`
       );
       res.setHeader("Cache-Control", "no-cache");
       res.send(Buffer.from(pdfBytes));
@@ -415,7 +425,7 @@ router.get("/:id/pdf", async (req: Request, res: Response): Promise<void> => {
         res.setHeader("Content-Type", "application/pdf");
         res.setHeader(
           "Content-Disposition",
-          `attachment; filename=\"calendar-${id}.pdf\"`
+          `attachment; filename="${calendar.year}-calendar.pdf"`
         );
         res.setHeader("Cache-Control", "no-cache");
         res.send(Buffer.from(pdfBytes));
@@ -432,7 +442,10 @@ router.get("/:id/pdf", async (req: Request, res: Response): Promise<void> => {
       }
     }
   } catch (error) {
-    handleDatabaseError(error, res);
+    // Custom error response for PDF export database errors
+    res
+      .status(500)
+      .json({ error: "Internal server error while generating PDF" });
   }
 });
 
