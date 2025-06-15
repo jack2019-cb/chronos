@@ -117,6 +117,34 @@
 - Separate test and development databases
 - Proper environment isolation
 
+## Immediate Path to Green Tests (June 2025)
+
+### 1. Triage and Isolate
+
+- Identify all failing or incomplete tests in `server/__tests__/`.
+- Temporarily skip (`.skip`) or move failing tests to a `__tests__/failing/` folder so only passing tests run.
+
+### 2. Restore Incrementally
+
+- Gradually re-enable tests, fixing failures one by one.
+- Commit after each successful fix or batch.
+
+### 3. Automate and Enforce
+
+- Ensure CI only runs passing tests.
+- Prevent merging of failing tests in the future (e.g., block PRs with `.skip` or tests in `failing/`).
+
+### 4. Implementation Steps
+
+1. Run all tests and collect a list of failing tests.
+2. For each failing test:
+   - Temporarily add `.skip` to the test or move it to a `__tests__/failing/` folder.
+3. Ensure all remaining tests pass.
+4. Commit this “triage” state.
+5. Begin restoring and fixing tests incrementally, committing after each fix.
+
+**Goal:** Achieve a green test suite in `server/` as quickly as possible, then restore full coverage safely.
+
 ## Notes
 
 - Keep development and test databases separate
