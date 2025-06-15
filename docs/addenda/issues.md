@@ -1,72 +1,35 @@
-# Current Issues and Challenges
+# ChronosCraft AI – Issues (Sprint: Bootstrapping & Dependency Management – Frontend)
 
-This document tracks current and upcoming challenges for the ChronosCraft project.
-Historical issues and completed work can be found in the archive directory (e.g., `archive/issues-2025-06-05.md`).
+> This document tracks actionable, focused issues for the current sprint. Historical issues are archived.
 
-## Active Issues
+## Frontend Bootstrapping Tasks
 
-### Test Suite Issues (2025-06-06)
+### 1. Initialize Next.js app with TypeScript in `client/`
 
-1. Export issues in calendar router resolved:
+- Set up a new Next.js project in the `client/` directory using TypeScript.
+- Ensure the app runs with `npm run dev`.
+- Commit the initial project structure.
 
-   - ✓ Fixed TS2309 error by properly structuring exports in `calendar.ts`
-   - ✓ Verified with successful TypeScript compilation
+### 2. Add Tailwind CSS or styled-components for styling
 
-2. Test Suite Status (6/8 failing):
+- Choose and install either Tailwind CSS or styled-components.
+- Integrate the chosen styling solution into the Next.js app.
+- Add a sample styled component or page to verify setup.
 
-   - Common Issue: Test suite hanging during execution
-   - Resolution Progress:
+### 3. Set up ESLint, Prettier, Jest, and React Testing Library
 
-   a. `__tests__/validation.test.ts`:
+- Configure ESLint for code linting (use dev container config if available).
+- Add Prettier for code formatting.
+- Set up Jest and React Testing Library for unit and integration tests.
+- Add a sample test to verify the setup.
 
-   - Status: ✅ FIXED (2025-06-06)
-   - Issue: Newly created test for validateCalendarInput
-   - Resolution: Test passes in isolation (3 tests passed)
-   - Coverage Note: Low coverage in calendar.ts (16.03%), but validation-specific code works
+### 4. Use environment variables for API endpoints and keys
 
-   b. `__tests__/calendar.test.ts`:
+- Create a `.env.local` file in `client/` for local development environment variables. **Do not commit this file.**
+- Document required environment variables in `client/README.md`.
+- Update code to use environment variables for API endpoints and keys.
+- **Note:** For production and CI/CD, all secrets and sensitive configuration must be managed using GitHub Secrets only. See the root `README.md` section "Secrets & Sensitive Data" and "Environment Variables & .env Usage" for policy and details.
 
-   - Status: ⚠️ PARTIALLY FIXED (2025-06-06)
-   - Issue: 40/41 tests passing
-   - Remaining Issue: DELETE endpoint test failing
-     - Expected: 500 Internal Server Error
-     - Actual: 204 No Content
-   - Next Step: Fix error handling in delete endpoint
+---
 
-   c. `__tests__/projectManagement.test.ts`:
-
-   - Status: ⏳ Pending
-   - Issue: Unrelated changes in project management files
-   - Next Step: Park changes and verify test in current state
-
-   d. `__tests__/projectSaveLoad.test.ts`:
-
-   - Status: ⏳ Pending
-   - Issue: To be investigated
-   - Next Step: Run test in isolation
-
-   e. `__tests__/pdfExport.test.ts`:
-
-   - Status: ⏳ Pending
-   - Issue: To be investigated
-   - Next Step: Run test in isolation
-
-   f. `__tests__/googleCalendar.test.ts`:
-
-   - Status: ⏳ Pending
-   - Issue: To be investigated
-   - Next Step: Run test in isolation
-
-   Action Plan:
-
-   1. Run each test in isolation using `jest -t <testName>`
-   2. Document specific errors for each test
-   3. Fix one test at a time, committing each fix separately
-   4. Verify fix doesn't impact other tests
-   5. Update status in this document after each fix
-
-<!-- Add new issues above this line -->
-
-## Upcoming Challenges
-
-<!-- Add upcoming challenges above this line -->
+> Next: Once all frontend bootstrapping tasks are complete, proceed to Backend bootstrapping tasks.
