@@ -1,4 +1,4 @@
-# caramel
+# strawberry (caramel)
 
 Home to ChronosCraft AI
 
