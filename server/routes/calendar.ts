@@ -1,4 +1,4 @@
-import express, { Request, Response, Router } from "express";
+import express, { Request, Response, Router, NextFunction } from "express";
 import { prisma } from "../lib/prisma";
 import { handleDatabaseError, CalendarError } from "../lib/errors";
 import { Prisma } from "@prisma/client";
@@ -384,70 +384,78 @@ router.delete("/:id", async (req: Request, res: Response): Promise<void> => {
 });
 
 // GET /calendar/:id/pdf - Export calendar to PDF
-router.get("/:id/pdf", async (req: Request, res: Response): Promise<void> => {
-  const { id } = req.params;
-
-  try {
-    const calendar = await prisma.calendar.findUnique({
-      where: { id },
-      include: { events: true },
-    });
-
-    if (!calendar) {
-      res.status(404).json({ message: "Calendar not found" });
-      return;
-    }
+router.get(
+  "/:id/pdf",
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const { id } = req.params;
 
     try {
-      // First attempt - with background
-      const pdfBytes = await exportCalendarToPDF({
-        year: calendar.year,
-        selectedMonths: calendar.selectedMonths,
-        events: calendar.events,
-        backgroundUrl: calendar.backgroundUrl ?? undefined,
+      const calendar = await prisma.calendar.findUnique({
+        where: { id },
+        include: { events: true },
       });
-      res.setHeader("Content-Type", "application/pdf");
-      res.setHeader(
-        "Content-Disposition",
-        `attachment; filename="${calendar.year}-calendar.pdf"`
-      );
-      res.setHeader("Cache-Control", "no-cache");
-      res.send(Buffer.from(pdfBytes));
-      return;
-    } catch (pdfError) {
-      // If first attempt fails, try without background
+
+      if (!calendar) {
+        res.status(404).json({ message: "Calendar not found" });
+        return;
+      }
+
       try {
+        // First attempt - with background
         const pdfBytes = await exportCalendarToPDF({
           year: calendar.year,
           selectedMonths: calendar.selectedMonths,
           events: calendar.events,
+          backgroundUrl: calendar.backgroundUrl ?? undefined,
         });
-        res.setHeader("Content-Type", "application/pdf");
+
+        // Set headers before sending response
+        res.type("application/pdf");
         res.setHeader(
           "Content-Disposition",
           `attachment; filename="${calendar.year}-calendar.pdf"`
         );
         res.setHeader("Cache-Control", "no-cache");
+
+        // Send the PDF bytes
         res.send(Buffer.from(pdfBytes));
         return;
-      } catch (retryError) {
-        // If both attempts fail, return error
-        res.status(500).json({
-          message: "Failed to generate PDF",
-          details:
-            retryError instanceof Error
-              ? retryError.message
-              : String(retryError),
-        });
+      } catch (pdfError) {
+        // If first attempt fails, try without background
+        try {
+          const pdfBytes = await exportCalendarToPDF({
+            year: calendar.year,
+            selectedMonths: calendar.selectedMonths,
+            events: calendar.events,
+          });
+
+          // Set headers before sending response
+          res.type("application/pdf");
+          res.setHeader(
+            "Content-Disposition",
+            `attachment; filename="${calendar.year}-calendar.pdf"`
+          );
+          res.setHeader("Cache-Control", "no-cache");
+
+          // Send the PDF bytes
+          res.send(Buffer.from(pdfBytes));
+          return;
+        } catch (fallbackError) {
+          res
+            .status(500)
+            .json({ error: "Internal server error while generating PDF" });
+          return;
+        }
       }
+    } catch (error) {
+      // Handle database errors
+      res
+        .status(500)
+        .json({ error: "Internal server error while generating PDF" });
+      return;
     }
-  } catch (error) {
-    // Custom error response for PDF export database errors
-    res
-      .status(500)
-      .json({ error: "Internal server error while generating PDF" });
   }
-});
+);
 
 export { validateCalendarInput };
 export default router;

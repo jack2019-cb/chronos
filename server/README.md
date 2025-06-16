@@ -9,6 +9,30 @@
 > - `services/` – Service layer for business logic and integrations
 > - `utils/` – Utility functions
 
+## Environment Variables
+
+Copy `.env.example` to `.env` and configure:
+
+```env
+# Database Configuration
+DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+POSTGRES_DB=chronoscraftDB
+POSTGRES_USER=chronosUSR
+POSTGRES_PASSWORD=chronosPWD
+
+# API Configuration
+PORT=5000
+
+# AI Service Keys (if needed)
+GEMINI_API_KEY=your_api_key_here
+```
+
+### Database Configuration
+
+- The database connection is configured via Docker Compose in the dev container
+- Prisma uses the DATABASE_URL to connect to PostgreSQL
+- See root `docs/CONFIGURATION.md` for more details
+
 ## Implementation Status (as of May 27, 2025)
 
 ### Completed Features
