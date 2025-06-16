@@ -1,11 +1,10 @@
 import CalendarCreator from "./components/CalendarCreator";
-import styles from "./page.module.css";
 
 export default function Home() {
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <div className={styles.ctas}>
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
+      <main className="container mx-auto px-4 py-8">
+        <div className="flex justify-center">
           <CalendarCreator />
         </div>
       </main>

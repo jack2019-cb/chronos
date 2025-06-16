@@ -16,6 +16,26 @@
 - **Core Purpose:** To democratize beautiful calendar design through intuitive AI, making personalization seamless and the output high-quality for both digital viewing and physical printing.
 - **Elevator Pitch:** Think "Canva meets Midjourney, but hyper-focused on beautiful, printable calendars you design by describing your vibe."
 
+## Environment Variables
+
+For local development:
+
+1. Copy `.env.example` to `.env.local`
+2. Update the variables as needed
+
+Required environment variables:
+
+- `NEXT_PUBLIC_API_URL`: Base URL for the backend API
+- `NEXT_PUBLIC_API_VERSION`: API version to use
+
+Optional environment variables:
+
+- `NEXT_PUBLIC_ANALYTICS_ID`: Analytics tracking ID
+- `NEXT_PUBLIC_ENABLE_AI_FEATURES`: Enable/disable AI features
+- `NEXT_PUBLIC_ENABLE_GOOGLE_CALENDAR`: Enable/disable Google Calendar integration
+
+Note: For production deployments, these variables are managed through GitHub Secrets and Actions. See the root README.md for details.
+
 ## Target User Vibe (Persona: "Creative Casey")
 
 - **Who:** Digitally savvy individual (hobbyist, parent, student, small business owner) who appreciates aesthetics but isn't a professional graphic designer. They value personalization for gifts, planning, or decor.
