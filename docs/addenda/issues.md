@@ -1,35 +1,37 @@
-# ChronosCraft AI – Issues (Sprint: Bootstrapping & Dependency Management – Frontend)
+# ChronosCraft AI – Issues (Sprint: Bootstrapping & Dependency Management – Backend)
 
-> This document tracks actionable, focused issues for the current sprint. Historical issues are archived.
+> This document tracks actionable, focused issues for the current backend bootstrapping sprint. Historical issues are archived.
 
-## Frontend Bootstrapping Tasks
+## Backend Bootstrapping Tasks
 
-### 1. Initialize Next.js app with TypeScript in `client/`
+### 1. Initialize Node.js/Express app with TypeScript in `server/`
 
-- Set up a new Next.js project in the `client/` directory using TypeScript.
-- Ensure the app runs with `npm run dev`.
+- Set up a new Node.js/Express project in the `server/` directory using TypeScript.
+- Ensure the app runs with `npm run dev` or equivalent.
 - Commit the initial project structure.
 
-### 2. Add Tailwind CSS or styled-components for styling
+### 2. Add Prisma ORM for PostgreSQL
 
-- Choose and install either Tailwind CSS or styled-components.
-- Integrate the chosen styling solution into the Next.js app.
-- Add a sample styled component or page to verify setup.
+- Install Prisma and set up the initial Prisma schema in `server/prisma/schema.prisma`.
+- Configure PostgreSQL connection (use environment variables).
+- Run `prisma init` and create the first migration.
+- Document database setup in `server/README.md`.
 
-### 3. Set up ESLint, Prettier, Jest, and React Testing Library
+### 3. Use dotenv for local config, environment variables in devcontainer
 
-- Configure ESLint for code linting (use dev container config if available).
-- Add Prettier for code formatting.
-- Set up Jest and React Testing Library for unit and integration tests.
+- Install and configure `dotenv` for local development.
+- Create a `.env` or `.env.local` file in `server/` (do not commit this file).
+- Document required environment variables in `server/README.md`.
+- Ensure devcontainer setup supports environment variables for local/CI/CD.
+
+### 4. Set up Jest, Supertest, and ESLint with full test coverage
+
+- Install and configure Jest for backend unit/integration tests.
+- Install and configure Supertest for API endpoint testing.
+- Install and configure ESLint for backend code linting.
 - Add a sample test to verify the setup.
-
-### 4. Use environment variables for API endpoints and keys
-
-- Create a `.env.local` file in `client/` for local development environment variables. **Do not commit this file.**
-- Document required environment variables in `client/README.md`.
-- Update code to use environment variables for API endpoints and keys.
-- **Note:** For production and CI/CD, all secrets and sensitive configuration must be managed using GitHub Secrets only. See the root `README.md` section "Secrets & Sensitive Data" and "Environment Variables & .env Usage" for policy and details.
+- Ensure all tests and linting pass with `npm test` and `npm run lint`.
 
 ---
 
-> Next: Once all frontend bootstrapping tasks are complete, proceed to Backend bootstrapping tasks.
+> Next: Once all backend bootstrapping tasks are complete, proceed to shared code and MVP implementation roadmap tasks.
