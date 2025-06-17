@@ -1,4 +1,4 @@
-# # ChronosCraft AI – Issues (Shared Code: NEXT_STEPS Implementation Plan)
+# Phase 1: NEXT_STEPS Implementation Plan
 
 > **Notice:** Some or most of the to-dos below may already be implemented. For each item, you must:
 >
@@ -6,47 +6,70 @@
 > 2. Verify and test that it works as intended.
 > 3. If not present or not working, implement and test it.
 
-This document provides explicit, actionable steps for implementing the Shared Code package and npm workspaces. Each section is structured for immediate implementation by any coder (human or agentic).
+This document provides explicit, actionable steps for Phase 1. Each section is structured for immediate implementation by any coder (human or agentic).
 
 ---
 
-## 1. Create Shared Package
+## 1. App Bootstrapping
 
-- [x] Ensure a `shared/` directory exists at the project root.
-- [x] Add a `package.json` to `shared/` with name, version, and type/module fields.
-- [x] Add a `README.md` to `shared/` describing its purpose and usage.
-
----
-
-## 2. Set Up NPM Workspaces
-
-- [x] Add a `workspaces` field to the root `package.json` including `server/`, `client/`, and `shared/`.
-- [x] Run `npm install` at the root to link all workspaces.
-- [x] Verify that dependencies can be shared and local imports work.
+- [ ] Ensure both backend (`server/`) and frontend (`client/`) apps have minimal working code (e.g., hello world endpoint/page).
+- [ ] Confirm both apps start and respond as expected.
 
 ---
 
-## 3. Shared Utilities and Types
+## 2. Database Setup
 
-- [x] Move or create utility functions, constants, and TypeScript types used by both frontend and backend into `shared/` (e.g., `shared/utils/`, `shared/types/`).
-- [x] Export these utilities/types from `shared/` so they can be imported in both `server/` and `client/`.
-- [x] Update imports in `server/` and `client/` to use the shared package.
-
----
-
-## 4. Developer Experience
-
-- [x] Update documentation in `shared/README.md` with usage examples.
-- [x] Ensure all scripts (`npm run dev`, `npm run test`, etc.) work from a clean checkout.
-- [x] Add or update `.env.example` files if needed for shared code. (Not needed; no shared env usage.)
-- [x] Confirm linting and formatting tools are configured and passing in `shared/`.
+- [ ] Configure Prisma in `server/` for PostgreSQL.
+- [ ] Define initial data models in `prisma/schema.prisma` (User, Calendar, Event).
+- [ ] Run migrations to create tables.
+- [ ] Document DB setup in `server/README.md`.
 
 ---
 
-## 5. Testing
+## 3. Calendar Model & CRUD Endpoints
 
-- [x] Write or update tests for all shared utilities and types.
-- [x] Ensure shared code is covered by tests in both backend and frontend.
+- [ ] Implement `Calendar` model in Prisma schema.
+- [ ] Scaffold backend endpoints for full CRUD:
+  - POST `/calendar` (create)
+  - GET `/calendar/:id` (read)
+  - PUT `/calendar/:id` (update)
+  - DELETE `/calendar/:id` (delete)
+- [ ] Add error handling and type definitions.
+- [ ] Ensure database persistence for all operations.
+- [ ] Write tests for all endpoints.
+
+---
+
+## 4. PDF Export (Basic)
+
+- [ ] Implement a backend endpoint to export a calendar as PDF.
+- [ ] Use a library (e.g., pdf-lib) for PDF generation.
+- [ ] Add a test to verify PDF output.
+
+---
+
+## 5. GenAI API Integration (Stub/Mock)
+
+- [ ] Scaffold a backend endpoint for GenAI integration (e.g., `/genai/suggest`).
+- [ ] Implement a mock or stub response.
+- [ ] Document how to replace with real integration later.
+
+---
+
+## 6. Developer Experience
+
+- [ ] Update all documentation for new endpoints and setup steps.
+- [ ] Ensure all scripts (`npm run dev`, `npm run test`, etc.) work from a clean checkout.
+- [ ] Add or update `.env.example` files.
+- [ ] Confirm linting and formatting tools are configured and passing.
+
+---
+
+## 7. Testing
+
+- [ ] Write or update tests for all new features.
+- [ ] Ensure at least 80% code coverage for backend logic.
+- [ ] Add end-to-end tests for calendar and PDF export flows.
 
 ---
 
