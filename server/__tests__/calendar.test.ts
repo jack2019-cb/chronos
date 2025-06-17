@@ -3,6 +3,7 @@ import express from "express";
 import calendarRouter from "../routes/calendar";
 import { cleanupDatabase, createTestCalendar } from "./helpers/db";
 import { prisma } from "../lib/prisma";
+import { CalendarError } from "../lib/errors";
 
 const app = express();
 app.use(express.json());
@@ -386,17 +387,6 @@ describe("Calendar API", () => {
       });
 
       // Mock the transaction to throw a CalendarError
-      const prismaLib = require("../lib/prisma");
-      const { CalendarError } = require("../lib/errors");
-      jest
-        .spyOn(prismaLib.prisma, "$transaction")
-        .mockImplementationOnce(() => {
-          throw new CalendarError(
-            "Transaction failed while deleting calendar",
-            500
-          );
-        });
-
       const response = await request(app)
         .delete(`/calendar/${testCalendar.id}`)
         .expect(500);

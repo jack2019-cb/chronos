@@ -2,6 +2,7 @@ import express, { Express, Request, Response, NextFunction } from "express";
 import path from "path";
 import cookieParser from "cookie-parser";
 import logger from "morgan";
+import { CalendarError } from "./lib/errors";
 
 import indexRouter from "./routes/index";
 import usersRouter from "./routes/users";
@@ -32,7 +33,7 @@ app.use("/projects", projectManagementRouter);
 // Error handling
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   console.error(err.stack);
-  if (err instanceof require("./lib/errors").CalendarError) {
+  if (err instanceof CalendarError) {
     const status = (err as any).statusCode || 400;
     res.status(status).json({ error: err.message });
   } else {

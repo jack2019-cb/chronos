@@ -1,3 +1,5 @@
+import { prisma } from "../lib/prisma";
+
 describe("trivial", () => {
   it("should pass", () => {
     expect(true).toBe(true);
@@ -20,16 +22,16 @@ describe("Prisma Client", () => {
 
   it("should initialize Prisma client in development environment", async () => {
     process.env.NODE_ENV = "development";
-    delete require.cache[require.resolve("../lib/prisma")];
-    const { prisma } = require("../lib/prisma");
+    jest.resetModules();
+    const { prisma } = await import("../lib/prisma");
     expect(prisma).toBeDefined();
     expect(global.prisma).toBeDefined();
   });
 
   it("should initialize Prisma client in production environment", async () => {
     process.env.NODE_ENV = "production";
-    delete require.cache[require.resolve("../lib/prisma")];
-    const { prisma } = require("../lib/prisma");
+    jest.resetModules();
+    const { prisma } = await import("../lib/prisma");
     expect(prisma).toBeDefined();
     expect(global.prisma).toBeUndefined();
   });

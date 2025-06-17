@@ -12,32 +12,32 @@ This document provides explicit, actionable steps for implementing the Shared Co
 
 ## 1. Create Shared Package
 
-- [ ] Ensure a `shared/` directory exists at the project root.
-- [ ] Add a `package.json` to `shared/` with name, version, and type/module fields.
-- [ ] Add a `README.md` to `shared/` describing its purpose and usage.
+- [x] Ensure a `shared/` directory exists at the project root.
+- [x] Add a `package.json` to `shared/` with name, version, and type/module fields.
+- [x] Add a `README.md` to `shared/` describing its purpose and usage.
 
 ---
 
 ## 2. Set Up NPM Workspaces
 
-- [ ] Add a `workspaces` field to the root `package.json` including `server/`, `client/`, and `shared/`.
-- [ ] Run `npm install` at the root to link all workspaces.
-- [ ] Verify that dependencies can be shared and local imports work.
+- [x] Add a `workspaces` field to the root `package.json` including `server/`, `client/`, and `shared/`.
+- [x] Run `npm install` at the root to link all workspaces.
+- [x] Verify that dependencies can be shared and local imports work.
 
 ---
 
 ## 3. Shared Utilities and Types
 
-- [ ] Move or create utility functions, constants, and TypeScript types used by both frontend and backend into `shared/` (e.g., `shared/utils/`, `shared/types/`).
-- [ ] Export these utilities/types from `shared/` so they can be imported in both `server/` and `client/`.
-- [ ] Update imports in `server/` and `client/` to use the shared package.
+- [x] Move or create utility functions, constants, and TypeScript types used by both frontend and backend into `shared/` (e.g., `shared/utils/`, `shared/types/`).
+- [x] Export these utilities/types from `shared/` so they can be imported in both `server/` and `client/`.
+- [x] Update imports in `server/` and `client/` to use the shared package.
 
 ---
 
 ## 4. Developer Experience
 
-- [ ] Update documentation in `shared/README.md` with usage examples.
-- [ ] Ensure all scripts (`npm run dev`, `npm run test`, etc.) work from a clean checkout.
+- [x] Update documentation in `shared/README.md` with usage examples.
+- [x] Ensure all scripts (`npm run dev`, `npm run test`, etc.) work from a clean checkout.
 - [ ] Add or update `.env.example` files if needed for shared code.
 - [ ] Confirm linting and formatting tools are configured and passing in `shared/`.
 

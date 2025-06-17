@@ -1,5 +1,5 @@
 /** @type {import('jest').Config} */
-module.exports = {
+const config = {
   testEnvironment: "jsdom",
   transform: {
     "^.+\\.(t|j)sx?$": ["@swc/jest"],
@@ -16,8 +16,9 @@ module.exports = {
     url: "http://localhost:3000",
   },
   testPathIgnorePatterns: [
-    '/node_modules/',
-    '/playwright/', // Ignore Playwright tests
-    '/playwright-report/'
+    "/node_modules/",
+    "/playwright/", // Ignore Playwright tests
   ],
 };
+
+export default config;
