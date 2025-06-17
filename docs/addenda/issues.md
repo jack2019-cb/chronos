@@ -38,15 +38,15 @@ This document provides explicit, actionable steps for implementing the Shared Co
 
 - [x] Update documentation in `shared/README.md` with usage examples.
 - [x] Ensure all scripts (`npm run dev`, `npm run test`, etc.) work from a clean checkout.
-- [ ] Add or update `.env.example` files if needed for shared code.
-- [ ] Confirm linting and formatting tools are configured and passing in `shared/`.
+- [x] Add or update `.env.example` files if needed for shared code. (Not needed; no shared env usage.)
+- [x] Confirm linting and formatting tools are configured and passing in `shared/`.
 
 ---
 
 ## 5. Testing
 
-- [ ] Write or update tests for all shared utilities and types.
-- [ ] Ensure shared code is covered by tests in both backend and frontend.
+- [x] Write or update tests for all shared utilities and types.
+- [x] Ensure shared code is covered by tests in both backend and frontend.
 
 ---
 

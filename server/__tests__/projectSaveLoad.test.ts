@@ -113,9 +113,11 @@ describe("Project Save/Load API", () => {
 
   describe("DELETE /projects/:id", () => {
     it("should delete a project", async () => {
+      const uniqueName = `Summer 2025 Calendar ${Date.now()}`;
       const createResponse = await request(app)
         .post("/projects")
-        .send(sampleProject);
+        .send({ ...sampleProject, name: uniqueName })
+        .expect(201);
 
       await request(app)
         .delete(`/projects/${createResponse.body.id}`)
