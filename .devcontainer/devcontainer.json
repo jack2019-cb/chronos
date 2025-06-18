@@ -16,21 +16,12 @@
     "ghcr.io/devcontainers/features/github-cli:1": {}
   },
 
-  "portsAttributes": {
-    "3000": {
-      "label": "frontend",
-      "onAutoForward": "openPreview"
-    },
-    "5000": {
-      "label": "backend",
-      "onAutoForward": "openPreview"
-    },
-    "5432": {
-      "label": "database",
-      "onAutoForward": "openPreview"
-    }
+  "postCreateCommand": "cd server && npm install && cd ../client && npm install",
+
+  "remoteEnv": {
+    "DATABASE_URL": "postgresql://${localEnv:POSTGRES_USER}:${localEnv:POSTGRES_PASSWORD}@db:5432/${localEnv:POSTGRES_DB}",
+    "GEMINI_API_KEY": "${localEnv:GEMINI_API_KEY}"
   },
-  "forwardPorts": [3000, 5000, 5432],
 
   "customizations": {
     "vscode": {
@@ -72,10 +63,20 @@
     }
   },
 
-  "postCreateCommand": "cd server && npm install && cd ../client && npm install",
+  "forwardPorts": [3000, 5000, 5432],
+  "portsAttributes": {
+    "3000": {
+      "label": "frontend",
+      "onAutoForward": "openPreview"
+    },
+    "5000": {
+      "label": "backend"
+    },
+    "5432": {
+      "label": "database"
+    }
+  },
 
-  "remoteEnv": {
-    "DATABASE_URL": "postgresql://${localEnv:POSTGRES_USER}:${localEnv:POSTGRES_PASSWORD}@db:5432/${localEnv:POSTGRES_DB}",
-    "GEMINI_API_KEY": "${localEnv:GEMINI_API_KEY}"
-  }
+  "remoteUser": "node"
+
 }
