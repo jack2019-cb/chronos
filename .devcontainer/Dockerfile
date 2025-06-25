@@ -14,4 +14,9 @@ RUN apt-get update && \
 #     && apt-get -y install --no-install-recommends <your-package> \
 #     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
+# Enables reliable headless browser testing
+RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
+    && apt-get -y install --no-install-recommends xvfb \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
 # The rest is handled by devcontainer.json (features, commands, settings, etc.)
