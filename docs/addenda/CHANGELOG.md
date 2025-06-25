@@ -86,10 +86,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - [ ] Implement external calendar integration
 - [ ] Complete PDF export functionality
 - [ ] Fix backend startup in start-dev.sh (Node.js ESM/TypeScript .ts execution issue)
+- [ ] **Migrate all server-side tests from Jest to Vitest.**
+  - **Reason:** This action is required due to lack of compliance with the documented project specification: all server-side tests must use Vitest (see README). The use of Jest for backend tests led to ESM/TypeScript incompatibility and test failures. Future updates must verify and adhere to project specs before implementation.
+  - [ ] Inventory all server-side test files and categorize by complexity/dependency.
+  - [ ] Install and configure Vitest in the server package (add `test:vitest` script).
+  - [ ] Migrate one simple, isolated test file to Vitest and verify it passes.
+  - [ ] Migrate remaining test files to Vitest, one by one or in small batches.
+  - [ ] Ensure Vitest test setup applies all Prisma migrations to the test database before running.
+  - [ ] Remove Jest dependencies, configs, and scripts from the backend.
+  - [ ] Update documentation and scripts to reference only Vitest for backend tests.
+  - [ ] Run the full Vitest suite and confirm all server-side tests pass.
+  - [ ] Review and clean up any ESM/TypeScript or database setup issues discovered during migration.
 
 ## [Unreleased] - 2025-05-29
 
 ### Added
+
 - Database integration completed:
   - Installed and initialized Prisma ORM in the backend
   - Implemented Calendar and Event models in `prisma/schema.prisma` with correct relations
@@ -98,6 +110,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   - Configured database connection and environment variables
 
 ### Changed
+
 - Updated docker-compose configuration for improved database connectivity:
   - Added health checks for PostgreSQL container
   - Configured proper network setup between app and database
@@ -105,8 +118,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   - Set proper environment variables for database connection
 
 ### Fixed
+
 - Resolved database connection issues in dev container setup
 - Fixed Prisma client generation and database migration process
 
 ### Technical Debt
+
 - Improved dev container configuration for better database reliability
