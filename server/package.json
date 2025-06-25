@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "test": "jest",
-    "dev": "DEBUG=* ts-node ./bin/www.ts",
-    "start": "ts-node ./bin/www.ts"
+    "dev": "DEBUG=* tsx ./bin/www.ts",
+    "start": "tsx ./bin/www.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.10.1",

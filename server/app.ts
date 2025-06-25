@@ -1,8 +1,13 @@
 import express, { Express, Request, Response, NextFunction } from "express";
 import path from "path";
+import { fileURLToPath } from "url";
 import cookieParser from "cookie-parser";
 import logger from "morgan";
 import { CalendarError } from "./lib/errors";
+
+// ESM-compatible __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 import indexRouter from "./routes/index";
 import usersRouter from "./routes/users";

@@ -78,6 +78,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   - [ ] External calendar integration pending
   - [ ] PDF export functionality pending
 
+---
+
+### Actionables Checklist (as of 2025-06-25)
+
+- [ ] Event handling enhancement for Calendar API
+- [ ] Implement external calendar integration
+- [ ] Complete PDF export functionality
+- [ ] Fix backend startup in start-dev.sh (Node.js ESM/TypeScript .ts execution issue)
+
 ## [Unreleased] - 2025-05-29
 
 ### Added
