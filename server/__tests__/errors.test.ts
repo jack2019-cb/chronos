@@ -1,4 +1,5 @@
 import { Response } from "express";
+import { vi } from "vitest";
 import {
   PrismaClientKnownRequestError,
   PrismaClientValidationError,
@@ -8,17 +9,17 @@ import { CalendarError, handleDatabaseError } from "../lib/errors";
 // Mock Response object
 const mockResponse = () => {
   const res: Partial<Response> = {
-    status: jest.fn().mockReturnThis(),
-    json: jest.fn().mockReturnThis(),
+    status: vi.fn().mockReturnThis(),
+    json: vi.fn().mockReturnThis(),
   };
   return res as Response;
 };
 
 describe("Error Handling", () => {
-  let consoleSpy: jest.SpyInstance;
+  let consoleSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
   afterEach(() => {

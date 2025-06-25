@@ -98,6 +98,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   - [ ] Run the full Vitest suite and confirm all server-side tests pass.
   - [ ] Review and clean up any ESM/TypeScript or database setup issues discovered during migration.
 
+### [2025-06-25] Server Test Migration & Vitest Status
+
+- Migrated and passing with Vitest:
+  - `trivial.test.ts`
+  - `errors.test.ts`
+  - `genai.test.ts`
+  - `validation.test.ts`
+- Passing but all tests skipped (systemic issues, not Vitest-specific):
+  - `calendar.test.ts`
+- Failing due to Jest-specific APIs and/or Supertest/ESM issues:
+  - `googleCalendar.test.ts` (needs migration from Jest to Vitest APIs and server/app setup review)
+- Not yet migrated/tested:
+
+  - `projectManagement.test.ts`
+  - `projectSaveLoad.test.ts`
+  - `pdfExport.test.ts`
+
+- Vitest config updated for ESM, Node, globals, and @shared alias.
+- All changes staged for commit and ready to push.
+
 ## [Unreleased] - 2025-05-29
 
 ### Added

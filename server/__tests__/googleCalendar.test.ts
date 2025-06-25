@@ -2,6 +2,7 @@ import request from "supertest";
 import app from "../app";
 import { MockGoogleCalendarService } from "../services/googleCalendar";
 import { CalendarError } from "../lib/errors";
+import { vi } from "vitest";
 
 describe("Google Calendar Integration", () => {
   describe("GET /calendar/google/auth", () => {
@@ -17,11 +18,12 @@ describe("Google Calendar Integration", () => {
 
     it("should handle internal server error during auth", async () => {
       // Mock the service to throw a generic error
-      jest
-        .spyOn(MockGoogleCalendarService.prototype, "getAuthUrl")
-        .mockImplementationOnce(() => {
-          throw new Error("Internal error");
-        });
+      vi.spyOn(
+        MockGoogleCalendarService.prototype,
+        "getAuthUrl"
+      ).mockImplementationOnce(() => {
+        throw new Error("Internal error");
+      });
 
       const response = await request(app)
         .get("/calendar/google/auth")
@@ -35,17 +37,18 @@ describe("Google Calendar Integration", () => {
 
     it("should handle CalendarError during auth", async () => {
       // Mock the service to throw a CalendarError
-      jest
-        .spyOn(MockGoogleCalendarService.prototype, "getAuthUrl")
-        .mockImplementationOnce(() => {
-          throw new CalendarError("Custom auth error", 403);
-        });
+      vi.spyOn(
+        MockGoogleCalendarService.prototype,
+        "getAuthUrl"
+      ).mockImplementationOnce(() => {
+        throw new CalendarError("Forbidden", 403);
+      });
 
       const response = await request(app)
         .get("/calendar/google/auth")
         .expect(403);
 
-      expect(response.body).toHaveProperty("error", "Custom auth error");
+      expect(response.body).toHaveProperty("error", "Forbidden");
     });
   });
 
@@ -95,11 +98,12 @@ describe("Google Calendar Integration", () => {
     });
 
     it("should handle internal server error during callback", async () => {
-      jest
-        .spyOn(MockGoogleCalendarService.prototype, "handleCallback")
-        .mockImplementationOnce(() => {
-          throw new Error("Internal error");
-        });
+      vi.spyOn(
+        MockGoogleCalendarService.prototype,
+        "handleCallback"
+      ).mockImplementationOnce(() => {
+        throw new Error("Internal error");
+      });
 
       const response = await request(app)
         .get("/calendar/google/callback")
@@ -152,11 +156,12 @@ describe("Google Calendar Integration", () => {
     });
 
     it("should handle internal server error during events fetch", async () => {
-      jest
-        .spyOn(MockGoogleCalendarService.prototype, "listEvents")
-        .mockImplementationOnce(() => {
-          throw new Error("Internal error");
-        });
+      vi.spyOn(
+        MockGoogleCalendarService.prototype,
+        "listEvents"
+      ).mockImplementationOnce(() => {
+        throw new Error("Internal error");
+      });
 
       const response = await request(app)
         .get("/calendar/google/events")
@@ -221,11 +226,12 @@ describe("Google Calendar Integration", () => {
     });
 
     it("should handle internal server error during import", async () => {
-      jest
-        .spyOn(MockGoogleCalendarService.prototype, "importEvents")
-        .mockImplementationOnce(() => {
-          throw new Error("Internal error");
-        });
+      vi.spyOn(
+        MockGoogleCalendarService.prototype,
+        "importEvents"
+      ).mockImplementationOnce(() => {
+        throw new Error("Internal error");
+      });
 
       const response = await request(app)
         .post("/calendar/google/import")
@@ -249,11 +255,12 @@ describe("Google Calendar Integration", () => {
     });
 
     it("should handle CalendarError during import", async () => {
-      jest
-        .spyOn(MockGoogleCalendarService.prototype, "importEvents")
-        .mockImplementationOnce(() => {
-          throw new CalendarError("Invalid event format", 400);
-        });
+      vi.spyOn(
+        MockGoogleCalendarService.prototype,
+        "importEvents"
+      ).mockImplementationOnce(() => {
+        throw new CalendarError("Invalid event format", 400);
+      });
 
       const response = await request(app)
         .post("/calendar/google/import")
