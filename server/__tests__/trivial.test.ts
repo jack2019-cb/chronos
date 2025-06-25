@@ -1,4 +1,5 @@
 import { prisma } from "../lib/prisma";
+import { vi } from "vitest";
 
 describe("trivial", () => {
   it("should pass", () => {
@@ -17,12 +18,12 @@ describe("Prisma Client", () => {
   afterEach(() => {
     process.env.NODE_ENV = originalEnv;
     global.prisma = originalPrisma;
-    jest.resetModules();
+    vi.resetModules();
   });
 
   it("should initialize Prisma client in development environment", async () => {
     process.env.NODE_ENV = "development";
-    jest.resetModules();
+    vi.resetModules();
     const { prisma } = await import("../lib/prisma");
     expect(prisma).toBeDefined();
     expect(global.prisma).toBeDefined();
@@ -30,7 +31,7 @@ describe("Prisma Client", () => {
 
   it("should initialize Prisma client in production environment", async () => {
     process.env.NODE_ENV = "production";
-    jest.resetModules();
+    vi.resetModules();
     const { prisma } = await import("../lib/prisma");
     expect(prisma).toBeDefined();
     expect(global.prisma).toBeUndefined();
