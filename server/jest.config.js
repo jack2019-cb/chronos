@@ -10,5 +10,5 @@ export default {
   moduleNameMapper: {
     "^@shared/(.*)$": "<rootDir>/../shared/$1",
   },
-  roots: ["/workspaces/strawberry"],
+  roots: ["/chronos"],
 };
