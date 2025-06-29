@@ -1,6 +1,19 @@
 # Consultant Contribution Workflow
 
-This document describes the simple workflow for contributing to the Chronos project as an external consultant, after direct access to the main repository is no longer available.
+This document describes the workflow for contributing to the Chronos project as an external consultant, after direct access to the main repository is no longer available.
+
+## How It Works in More Detail
+
+- **Chronos is a public repository:** Anyone can view, clone, and fork it.
+- **Contributions:**
+  - Anyone (including consultants) can fork the repository, make changes, and submit a pull request (PR).
+  - Project maintainers review PRs and decide whether to merge them.
+- **Collaborators:**
+  - If you are a collaborator, you can push branches directly to the main repository and open PRs from there.
+  - If you are not a collaborator, you must use the fork-and-PR workflow described below.
+- **Authentication:**
+  - SSH keys (or a personal access token for HTTPS) are required for pushing changes to GitHub.
+  - You do not need authentication for read-only operations (clone, fetch).
 
 ## Steps for Contributing
 
