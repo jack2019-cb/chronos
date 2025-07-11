@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useCustomization } from "./CustomizationContext";
 import { useCalendarView } from "./CalendarViewContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import YearView from "./views/YearView";
@@ -13,6 +14,30 @@ import {
 
 const CalendarArea: React.FC = () => {
   const { view } = useCalendarView();
+  const { themeId, fontId, backgroundId } = useCustomization();
+
+  // Example: map theme/font/background to styles
+  const themeStyles: Record<string, React.CSSProperties> = {
+    light: { background: "#fff", color: "#222" },
+    dark: { background: "#222", color: "#fff" },
+  };
+  const fontStyles: Record<string, React.CSSProperties> = {
+    sans: { fontFamily: "Geist, Arial, sans-serif" },
+    mono: { fontFamily: "Geist Mono, monospace" },
+  };
+  const backgroundStyles: Record<string, React.CSSProperties> = {
+    bg1: { backgroundImage: "url(/public/next.svg)", backgroundSize: "cover" },
+    bg2: {
+      backgroundImage: "url(/public/vercel.svg)",
+      backgroundSize: "cover",
+    },
+  };
+
+  const style: React.CSSProperties = {
+    ...themeStyles[themeId],
+    ...fontStyles[fontId],
+    ...backgroundStyles[backgroundId],
+  };
 
   return (
     <ThemeProvider>
@@ -20,7 +45,7 @@ const CalendarArea: React.FC = () => {
         className="calendar-plus-area"
         style={{ display: "flex", gap: "2rem" }}
       >
-        <section style={{ flex: 2 }}>
+        <section style={{ flex: 2, ...style }}>
           <ThemeSwitcher />
           {view === "year" && (
             <YearView

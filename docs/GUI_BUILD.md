@@ -72,8 +72,34 @@
 
 3. **Customization Tools**
 
-   - Theme and color palette selection UI
-   - Font and background customization controls
+   **Actionables & Subtasks:**
+
+   - [x] Define requirements for theme, color palette, font, and background customization
+   - [x] Decide on theme system architecture (Context API; CSS variables vs styled-components noted)
+   - [ ] Plan asset management for fonts and backgrounds
+   - [x] Sketch wireframes for customization UI panels
+     - [x] Sidebar panel layout: vertical stack of ThemeSelector, FontSelector, BackgroundSelector
+     - [x] Each selector: grid or list of options with preview swatches/buttons
+     - [x] Live preview area: updates calendar appearance in real time
+     - [x] Responsive design: adapts for desktop/tablet/mobile
+     - [x] Accessibility: keyboard navigation, ARIA labels
+
+   **Wireframe Description:**
+
+   - The customization sidebar contains three main sections:
+     1. ThemeSelector: shows color swatches or theme previews in a grid/list
+     2. FontSelector: displays font names with sample text or style
+     3. BackgroundSelector: shows image thumbnails or color blocks
+   - Selecting an option updates the calendar preview instantly.
+   - The sidebar is always visible on desktop; collapsible on mobile/tablet.
+   - All controls are accessible via keyboard and screen reader.
+   - [x] Scaffold new components:
+     - ThemeSelector
+     - FontSelector
+     - BackgroundSelector
+   - [x] Integrate customization components with Context API for state management
+   - [x] Add live preview functionality to CalendarArea for customizations
+   - [ ] Document theme system and customization logic in technical docs
 
    To Consider:
 
