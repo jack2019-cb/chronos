@@ -59,11 +59,11 @@
   // --- PORT FORWARDING ---
   "forwardPorts": [5173, 3000, 5432],
   "portsAttributes": {
-    "5173": {
+    "3000": {
       "label": "client/FE (React/Next.js)",
       "onAutoForward": "openPreview"
     },
-    "3000": { "label": "server/BE (Node.js/Express)" },
+    "5000": { "label": "server/BE (Node.js/Express)" },
     "5432": { "label": "database (PostgreSQL)" }
   },
 
