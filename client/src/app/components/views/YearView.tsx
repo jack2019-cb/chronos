@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useMemo, memo, useCallback } from "react";
+import React, { useMemo, memo, useCallback, useState } from "react";
 import { CalendarEvent, Holiday, Theme } from "../types/calendar";
 import { getYearMatrix, formatDate } from "../utils/calendarUtils";
+import { useTheme } from "../contexts/ThemeContext";
 import styles from "./YearView.module.css";
 
 interface YearViewProps {
@@ -30,24 +31,23 @@ const months = [
 
 const weekdays = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
-const DayCell = memo(
-  ({
-    calDate,
-    events,
-    holidays,
-    onDayClick,
-  }: {
-    calDate: {
-      year: number;
-      month: number;
-      date: number;
-      isToday: boolean;
-      isCurrentMonth: boolean;
-    };
-    events: CalendarEvent[];
-    holidays: Holiday[];
-    onDayClick?: (date: Date) => void;
-  }) => {
+interface DayCellProps {
+  calDate: {
+    year: number;
+    month: number;
+    date: number;
+    isToday: boolean;
+    isCurrentMonth: boolean;
+  };
+  events: CalendarEvent[];
+  holidays: Holiday[];
+  onDayClick?: (date: Date) => void;
+  isSelected?: boolean;
+  onClick: (date: Date) => void;
+}
+
+const DayCell = memo<DayCellProps>(
+  ({ calDate, events, holidays, onDayClick, isSelected, onClick }) => {
     const dateStr = useMemo(
       () => formatDate(calDate.year, calDate.month, calDate.date),
       [calDate]
@@ -72,10 +72,17 @@ const DayCell = memo(
           calDate.isCurrentMonth ? styles.currentMonth : styles.otherMonth,
           hasEvents ? styles.hasEvents : "",
           hasHolidays ? styles.hasHolidays : "",
+          isSelected ? styles.selected : "",
         ]
           .filter(Boolean)
           .join(" "),
-      [calDate.isToday, calDate.isCurrentMonth, hasEvents, hasHolidays]
+      [
+        calDate.isToday,
+        calDate.isCurrentMonth,
+        hasEvents,
+        hasHolidays,
+        isSelected,
+      ]
     );
 
     const date = useMemo(
@@ -100,11 +107,23 @@ const DayCell = memo(
     );
 
     const handleClick = useCallback(() => {
+      onClick(date);
       onDayClick?.(date);
-    }, [onDayClick, date]);
+    }, [onClick, onDayClick, date]);
 
     return (
-      <div className={dayClasses} onClick={handleClick} title={tooltipContent}>
+      <div
+        className={dayClasses}
+        onClick={handleClick}
+        title={tooltipContent}
+        role="button"
+        tabIndex={0}
+        onKeyPress={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            handleClick();
+          }
+        }}
+      >
         <span className={styles.dayNumber}>{calDate.date}</span>
         {(hasEvents || hasHolidays) && (
           <div className={styles.indicators}>
@@ -126,12 +145,16 @@ const MonthGrid = memo(
     events,
     holidays,
     onDayClick,
+    selectedDate,
+    onDateClick,
   }: {
     month: ReturnType<typeof getYearMatrix>[0];
     monthIndex: number;
     events: CalendarEvent[];
     holidays: Holiday[];
     onDayClick?: (date: Date) => void;
+    selectedDate: Date | null;
+    onDateClick: (date: Date) => void;
   }) => (
     <div className={styles.month}>
       <h3 className={styles.monthTitle}>{months[monthIndex]}</h3>
@@ -150,6 +173,11 @@ const MonthGrid = memo(
             events={events}
             holidays={holidays}
             onDayClick={onDayClick}
+            onClick={onDateClick}
+            isSelected={
+              selectedDate?.getTime() ===
+              new Date(calDate.year, calDate.month, calDate.date).getTime()
+            }
           />
         ))}
       </div>
@@ -159,9 +187,23 @@ const MonthGrid = memo(
 
 MonthGrid.displayName = "MonthGrid";
 
-export const YearView = memo<YearViewProps>(
-  ({ year, events, holidays, theme, onDayClick }) => {
-    const yearMatrix = useMemo(() => getYearMatrix(year), [year]);
+export const YearView = memo<Omit<YearViewProps, "theme">>(
+  ({ year, events, holidays, onDayClick }) => {
+    const { currentTheme: theme } = useTheme();
+    const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+
+    const handleDateClick = useCallback(
+      (date: Date) => {
+        console.log("Day clicked:", date);
+        setSelectedDate((prevDate) =>
+          prevDate?.getTime() === date.getTime() ? null : date
+        );
+        onDayClick?.(date);
+      },
+      [onDayClick]
+    );
+
+    const calendarMatrix = useMemo(() => getYearMatrix(year), [year]);
 
     const themeStyles = useMemo(
       () => ({
@@ -181,7 +223,7 @@ export const YearView = memo<YearViewProps>(
         style={themeStyles as React.CSSProperties}
       >
         <div className={styles.yearGrid}>
-          {yearMatrix.map((month, monthIndex) => (
+          {calendarMatrix.map((month, monthIndex) => (
             <MonthGrid
               key={monthIndex}
               month={month}
@@ -189,6 +231,8 @@ export const YearView = memo<YearViewProps>(
               events={events}
               holidays={holidays}
               onDayClick={onDayClick}
+              selectedDate={selectedDate}
+              onDateClick={handleDateClick}
             />
           ))}
         </div>
