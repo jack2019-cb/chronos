@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import YearlyCalendarGrid from "./YearlyCalendarGrid";
-import { exportCalendarToPDF } from "../utils/pdfExport";
+import { exportCalendarToPDF } from "shared";
 import { createCalendar, updateCalendar, deleteCalendar } from "../utils/api";
 
 const currentYear = new Date().getFullYear();

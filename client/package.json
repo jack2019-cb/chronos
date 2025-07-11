@@ -15,7 +15,8 @@
     "next": "^15.3.3",
     "pdf-lib": "^1.17.1",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "shared": "file:../shared"
   },
   "devDependencies": {
     "@babel/core": "^7.27.1",
