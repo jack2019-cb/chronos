@@ -22,12 +22,12 @@
 
 2. **Implement Core Features**
 
-   - [ ] Add view switcher UI to TopBar (year/month/week/day)
-   - [ ] Implement view switching logic in CalendarArea
-   - [ ] Add live preview panel to CalendarArea
-   - [ ] Set up smart defaults (current year, clean theme, holidays)
-   - [ ] Connect view switcher to update calendar view
-   - [ ] Add placeholder data for events and holidays
+   - [x] Add view switcher UI to TopBar (year/month/week/day)
+   - [x] Implement view switching logic in CalendarArea
+   - [x] Add live preview panel to CalendarArea
+   - [x] Set up smart defaults (current year, clean theme, holidays)
+   - [x] Connect view switcher to update calendar view
+   - [x] Add placeholder data for events and holidays
 
    To Consider:
 
