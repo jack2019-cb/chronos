@@ -20,23 +20,23 @@ const CalendarArea: React.FC = () => {
   const themeStyles: Record<string, React.CSSProperties> = {
     light: { background: "#fff", color: "#222" },
     dark: { background: "#222", color: "#fff" },
+    "default-theme": { background: "#fff", color: "#222" },
   };
   const fontStyles: Record<string, React.CSSProperties> = {
     sans: { fontFamily: "Geist, Arial, sans-serif" },
     mono: { fontFamily: "Geist Mono, monospace" },
+    "default-font": { fontFamily: "Geist, Arial, sans-serif" },
   };
   const backgroundStyles: Record<string, React.CSSProperties> = {
-    bg1: { backgroundImage: "url(/public/next.svg)", backgroundSize: "cover" },
-    bg2: {
-      backgroundImage: "url(/public/vercel.svg)",
-      backgroundSize: "cover",
-    },
+    bg1: { backgroundImage: "url(/next.svg)", backgroundSize: "cover" },
+    bg2: { backgroundImage: "url(/vercel.svg)", backgroundSize: "cover" },
+    "default-bg": { backgroundImage: "none" },
   };
 
   const style: React.CSSProperties = {
-    ...themeStyles[themeId],
-    ...fontStyles[fontId],
-    ...backgroundStyles[backgroundId],
+    ...(themeStyles[themeId] || themeStyles["default-theme"]),
+    ...(fontStyles[fontId] || fontStyles["default-font"]),
+    ...(backgroundStyles[backgroundId] || backgroundStyles["default-bg"]),
   };
 
   return (
