@@ -2,6 +2,7 @@
 
 import React from "react";
 import { useCalendarView } from "./CalendarViewContext";
+import YearView from "./views/YearView";
 import {
   DEFAULT_YEAR,
   DEFAULT_THEME,
@@ -18,7 +19,16 @@ const CalendarArea: React.FC = () => {
     >
       <section style={{ flex: 2 }}>
         {view === "year" && (
-          <div>Year View (Grid, Drag/Drop, Live Preview)</div>
+          <YearView
+            year={DEFAULT_YEAR}
+            events={PLACEHOLDER_EVENTS}
+            holidays={DEFAULT_HOLIDAYS}
+            theme={DEFAULT_THEME}
+            onDayClick={(date) => {
+              console.log("Day clicked:", date);
+              // TODO: Implement day click handler
+            }}
+          />
         )}
         {view === "month" && (
           <div>Month View (Grid, Drag/Drop, Live Preview)</div>

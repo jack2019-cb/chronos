@@ -9,15 +9,39 @@ export const DEFAULT_THEME = {
 };
 
 export const DEFAULT_HOLIDAYS = [
-  { date: `${new Date().getFullYear()}-01-01`, name: "New Year's Day" },
-  { date: `${new Date().getFullYear()}-07-04`, name: "Independence Day" },
-  { date: `${new Date().getFullYear()}-12-25`, name: "Christmas Day" },
+  {
+    date: `${new Date().getFullYear()}-01-01`,
+    name: "New Year's Day",
+    type: "national",
+  },
+  {
+    date: `${new Date().getFullYear()}-07-04`,
+    name: "Independence Day",
+    type: "national",
+  },
+  {
+    date: `${new Date().getFullYear()}-12-25`,
+    name: "Christmas Day",
+    type: "religious",
+  },
   // Add more as needed
 ];
 
 export const PLACEHOLDER_EVENTS = [
-  { date: `${new Date().getFullYear()}-01-15`, title: "Project Kickoff" },
-  { date: `${new Date().getFullYear()}-02-10`, title: "Team Meeting" },
+  {
+    id: "evt-001",
+    date: `${new Date().getFullYear()}-01-15`,
+    title: "Project Kickoff",
+    description: "Initial project planning meeting",
+    category: "work",
+  },
+  {
+    id: "evt-002",
+    date: `${new Date().getFullYear()}-02-10`,
+    title: "Team Meeting",
+    description: "Monthly team sync",
+    category: "work",
+  },
   { date: `${new Date().getFullYear()}-03-22`, title: "Conference" },
   { date: `${new Date().getFullYear()}-05-05`, title: "Release v1.0" },
   { date: `${new Date().getFullYear()}-09-01`, title: "Vacation Start" },
