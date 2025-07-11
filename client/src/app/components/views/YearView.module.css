@@ -60,6 +60,19 @@
   color: white;
 }
 
+.day.selected {
+  background-color: var(--calendar-accent);
+  color: white;
+  font-weight: bold;
+  box-shadow: 0 0 0 2px var(--calendar-primary);
+  z-index: 1;
+  position: relative;
+}
+
+.day.selected:hover {
+  background-color: var(--calendar-primary);
+}
+
 .dayNumber {
   font-weight: 500;
 }
@@ -67,6 +80,18 @@
 .today {
   background: var(--calendar-primary);
   color: white;
+}
+
+.selected {
+  background: var(--calendar-accent) !important;
+  color: white !important;
+  transform: scale(1.05);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  z-index: 1;
+}
+
+.selected:hover {
+  transform: scale(1.1);
 }
 
 .otherMonth {
