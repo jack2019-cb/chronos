@@ -1,5 +1,5 @@
 {
-  "name": "AetherPress v0.1 (Alpha)",
+  "name": "ChronosCraft v0.1 (Alpha)",
   "image": "mcr.microsoft.com/devcontainers/javascript-node:22-bullseye",
 
   "waitFor": "onCreateCommand",

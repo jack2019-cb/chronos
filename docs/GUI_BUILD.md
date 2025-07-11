@@ -15,8 +15,8 @@
 
    To Consider:
 
-   - Component composition patterns for reusability
-   - Prop drilling vs Context API for state management
+   - **Component composition** patterns for reusability
+   - **Prop drilling vs Context API** for state management
    - Testing strategy for component integration
    - Accessibility patterns from the start
 
@@ -31,7 +31,7 @@
 
    To Consider:
 
-   - State management architecture choice
+   - **State management** architecture choice
    - Performance optimization for view transitions
    - Caching strategy for calendar data
    - Interface consistency across views
