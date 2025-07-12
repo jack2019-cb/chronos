@@ -65,6 +65,7 @@
 ## Technology Vibe (Frontend)
 
 - **Frontend:** Modern, component-based JS framework (React). Focus on a clean, responsive UI.
+- **Theme System:** Context API-based theming with dynamic CSS variables. See detailed documentation in [Theme System and Customization](../docs/addenda/THEME_SYSTEM.md).
 - **Generative AI:** Leverage best-in-class third-party APIs for core GenAI (image generation, possibly LLM for assistant). Build custom logic for agent orchestration and workflow, not foundational models.
 - **PDF Generation:** Use a proven, robust library.
 

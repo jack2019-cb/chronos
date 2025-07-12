@@ -48,6 +48,7 @@ For detailed API documentation, see [API Documentation](../docs/API.md).
 
 - Integrate with third-party GenAI APIs for image and theme generation.
 - Orchestrate AI suggestions for themes, palettes, fonts.
+- Theme system integration (see [Theme System and Customization](../docs/addenda/THEME_SYSTEM.md) for frontend implementation details)
 - Serve generated assets to frontend.
 
 **(Epic 3)** AI Assistant Vibe - "Helpful & Intuitive":
