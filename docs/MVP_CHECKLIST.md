@@ -28,26 +28,45 @@
 
 ## MVP Implementation Roadmap
 
-### Phase 1: Foundation
+### Phase 1: Visual Impact (Priority)
 
-- [✓] Bootstrap both apps with minimal code (hello world endpoints/pages)
-- [ ] Set up database connection and migrations (Prisma)
-- [✓] Implement basic calendar data models and endpoints
-  - [✓] Full CRUD operations
-  - [✓] Error handling
-  - [✓] Type definitions
-  - [ ] Database persistence
-- [ ] Set up PDF export (basic version)
-- [ ] Set up GenAI API integration (stub/mock if needed)
+- [✓] Bootstrap both apps with minimal code
+- [ ] Set up GenAI API integration
+  - [ ] Google Gemini API connection
+  - [ ] Image generation pipeline
+  - [ ] Theme suggestion system
+  - [ ] Asset optimization workflow
+- [ ] Implement showcase features
+  - [ ] 5 premium-quality preset themes
+  - [ ] 3 distinctive background styles
+  - [ ] High-impact typography selections
+  - [ ] Smooth theme transitions
 
-### Phase 2: Core Features
+### Phase 2: Output Quality
 
-- [ ] Build frontend UI for calendar creation and export
+- [ ] PDF/PNG export system
+  - [ ] Vector-based calendar grid
+  - [ ] High-resolution asset handling
+  - [ ] Print-ready color profiles
+  - [ ] Layout consistency checks
+- [ ] Visual polish
+  - [ ] Professional typography
+  - [ ] Spacing and alignment
+  - [ ] Color harmony validation
+  - [ ] Responsive behaviors
+
+### Phase 3: Core Features
+
+- [ ] Calendar interactions
   - [✓] Basic calendar grid component
   - [✓] Calendar creator component
-  - [ ] API integration
-  - [ ] Event management UI
-- [ ] Implement GenAI-powered image/theme generation
+  - [ ] Sample event data
+  - [ ] Basic state persistence
+- [ ] Demo preparation
+  - [ ] Example calendars
+  - [ ] Guided walkthrough
+  - [ ] Performance optimization
+  - [ ] Error prevention
 - [ ] Add project save/load functionality
 - [ ] Add user authentication (if needed for MVP)
 

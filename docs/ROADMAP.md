@@ -8,33 +8,45 @@ This document outlines the planned features, priorities, and future directions f
 
 ### v0.1 – MVP _(In Progress)_
 
+Priority 1: Visual Impact
+
 - [x] **Project Infrastructure**
       _Goal:_ Set up development environment, testing, and basic project structure.
       _Acceptance Criteria:_ Dev container working, all tests passing, proper configuration in place.
 
-- [ ] **Basic calendar creation (select year/month, grid/list layouts)**  
-       _Goal:_ User can select a year/month and choose from standard grid or list layouts.  
-       _Acceptance Criteria:_ Calendar displays correct dates and layout; user can switch between layouts.
-
-- [ ] **Manual event input**  
-       _Goal:_ User can add, edit, and remove events for specific dates.  
-       _Acceptance Criteria:_ Events persist and display correctly on the calendar.
-
-- [ ] **Basic PDF/PNG export**  
-       _Goal:_ User can export the calendar as a print-ready PDF or PNG.  
-       _Acceptance Criteria:_ Exported files match on-screen design and are high-resolution.
-
 - [ ] **GenAI-powered background/header image generation**  
        _Goal:_ User can generate unique calendar backgrounds/headers using text prompts (e.g., via Google Gemini API).  
        _Acceptance Criteria:_ Images are generated, applied to calendar, and included in exports.
+      _Demo Priority:_ High – Primary "wow factor" feature
 
 - [ ] **Simple AI theme suggestions**  
        _Goal:_ System suggests color palettes, fonts, and themes based on user input or prompts.  
        _Acceptance Criteria:_ Suggestions are relevant and can be applied to the calendar.
+      _Demo Priority:_ High – Shows AI understanding of design
+
+Priority 2: Core Output
+
+- [ ] **Basic PDF/PNG export**  
+       _Goal:_ User can export the calendar as a print-ready PDF or PNG.  
+       _Acceptance Criteria:_ Exported files match on-screen design and are high-resolution.
+      _Demo Priority:_ High – Delivers tangible result
+
+- [ ] **Basic calendar creation refinements**  
+       _Goal:_ Polish year view and ensure visual appeal of layouts.  
+       _Acceptance Criteria:_ Calendar displays professionally with AI-enhanced visuals.
+      _Demo Priority:_ Medium – Foundation for showcasing AI features
+
+Priority 3: User Content
+
+- [ ] **Manual event input**  
+       _Goal:_ User can add, edit, and remove events for specific dates.  
+       _Acceptance Criteria:_ Events persist and display correctly on the calendar.
+      _Demo Priority:_ Low – Can use sample data for demo
 
 - [ ] **Project save/load functionality**  
        _Goal:_ User can save and reload calendar projects.  
        _Acceptance Criteria:_ Saved projects restore all settings, events, and designs.
+      _Demo Priority:_ Low – Not critical for demo showcase
 
 ### v0.2 – AI Assistant & Integrations
 
