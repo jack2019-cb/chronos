@@ -70,7 +70,8 @@
   // --- GENERAL SETTINGS ---
   "remoteEnv": {
     "DATABASE_URL": "postgresql://${localEnv:POSTGRES_USER}:${localEnv:POSTGRES_PASSWORD}@db:5432/${localEnv:POSTGRES_DB}",
-    "GEMINI_API_KEY": "${localEnv:GEMINI_API_KEY}"
+    "GEMINI_API_KEY": "${localEnv:GEMINI_API_KEY}",
+    "GEMINI_API_URL": "${localEnv:GEMINI_API_URL}"
   },
   "remoteUser": "node",
   "hostRequirements": {

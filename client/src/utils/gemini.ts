@@ -14,13 +14,18 @@ export interface GeminiImageResponse {
   meta?: unknown;
 }
 
-const GEMINI_API_URL = process.env.NEXT_PUBLIC_GEMINI_API_URL || "";
-const GEMINI_API_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY || "";
+const GEMINI_API_URL =
+  process.env.NEXT_PUBLIC_GEMINI_API_URL || process.env.GEMINI_API_URL || "";
+const GEMINI_API_KEY =
+  process.env.NEXT_PUBLIC_GEMINI_API_KEY || process.env.GEMINI_API_KEY || "";
 
 export async function requestGeminiImage(
   req: GeminiImageRequest
 ): Promise<GeminiImageResponse> {
-  if (!GEMINI_API_URL || !GEMINI_API_KEY) {
+  if (!GEMINI_API_KEY) {
+    throw new Error("Gemini API URL or key not set in environment variables");
+  }
+  if (!GEMINI_API_URL) {
     throw new Error("Gemini API URL or key not set in environment variables");
   }
   // Example payload structure; adjust for actual Gemini API
@@ -44,6 +49,9 @@ export async function requestGeminiImage(
   } catch (error: unknown) {
     // Log error for debugging
     console.error("Gemini API error:", error);
-    throw new Error("Failed to fetch image from Gemini API");
+    if (error instanceof Error) {
+      throw error; // Preserve original error
+    }
+    throw new Error("Gemini API URL or key not set in environment variables");
   }
 }

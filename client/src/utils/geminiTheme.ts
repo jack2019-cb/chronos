@@ -19,13 +19,25 @@ export interface ThemeSuggestionResponse {
   meta?: unknown;
 }
 
-const GEMINI_THEME_API_URL = process.env.NEXT_PUBLIC_GEMINI_THEME_API_URL || "";
-const GEMINI_API_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY || "";
+const GEMINI_THEME_API_URL =
+  process.env.NEXT_PUBLIC_GEMINI_THEME_API_URL ||
+  process.env.GEMINI_THEME_API_URL ||
+  process.env.NEXT_PUBLIC_GEMINI_API_URL ||
+  process.env.GEMINI_API_URL ||
+  "";
+const GEMINI_API_KEY =
+  process.env.NEXT_PUBLIC_GEMINI_API_KEY || process.env.GEMINI_API_KEY || "";
 
 export async function requestThemeSuggestions(
   req: ThemeSuggestionRequest
 ): Promise<ThemeSuggestionResponse> {
-  if (!GEMINI_THEME_API_URL || !GEMINI_API_KEY) {
+  // First check for credentials
+  if (!GEMINI_API_KEY) {
+    throw new Error(
+      "Gemini Theme API URL or key not set in environment variables"
+    );
+  }
+  if (!GEMINI_THEME_API_URL) {
     throw new Error(
       "Gemini Theme API URL or key not set in environment variables"
     );
@@ -49,6 +61,11 @@ export async function requestThemeSuggestions(
     };
   } catch (error: unknown) {
     console.error("Gemini Theme API error:", error);
-    throw new Error("Failed to fetch theme suggestions from Gemini API");
+    if (error instanceof Error) {
+      throw error; // Preserve original error
+    }
+    throw new Error(
+      "Gemini Theme API URL or key not set in environment variables"
+    );
   }
 }

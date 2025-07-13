@@ -2,6 +2,39 @@
 
 > **Note:** For detailed issues, API reference, and historical notes, see `/docs/addenda/`.
 
+## Testing Strategy Update (2025-07-13)
+
+### Phase 1: Core Functionality
+
+- [ ] Verify all pre-AI integration tests pass
+  - [ ] Calendar creation tests
+  - [ ] Grid display tests
+  - [ ] Basic smoke tests
+- [ ] Remove or fix any failing core tests
+- [ ] Clean up remaining AI-related test fragments
+
+### Phase 2: Integration Testing
+
+- [ ] Implement real Gemini API integration tests
+  - [ ] Theme generation validation
+  - [ ] API response validation
+  - [ ] Rate limiting behavior
+- [ ] End-to-end user workflow tests
+  - [ ] Calendar creation to export
+  - [ ] Theme application process
+  - [ ] PDF generation and quality
+
+### Phase 3: Quality & Performance
+
+- [ ] Theme quality validation tests
+  - [ ] Color harmony checks
+  - [ ] Accessibility standards
+  - [ ] Visual consistency
+- [ ] Performance monitoring
+  - [ ] API response times
+  - [ ] Rate limit handling
+  - [ ] Theme generation speed
+
 ## Current Status (2025-07-12)
 
 ### Demo Preparation Checklist

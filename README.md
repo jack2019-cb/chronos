@@ -44,13 +44,20 @@ For detailed configuration and setup instructions, see `docs/CONFIGURATION.md`.
 
 ## Technology Vibe
 
+- **Unified Testing Experience:**
+  All client-side tests are powered by Jest for seamless React/Next.js development. All server-side tests run on Vitest for fast, modern Node.js/TypeScript workflows. This clear separation ensures reliability, speed, and best-in-class tooling for every part of the stack.
+- **Module System:** ~~ES Modules (ESM) standardized across all packages for:~~
+    ~~- Native async/await support without transpilation~~
+    ~~- Better tree-shaking and build optimization~~
+    ~~- Future-proof codebase aligned with modern JavaScript~~
+    ~~- Consistent import/export syntax across frontend and backend~~
 - **Frontend:** Modern, component-based JS framework (React/Next.js). Focus on a clean, responsive UI.
 - **Backend:** Scalable platform (Node.js/Express). Ready to orchestrate multiple API calls.
 - **Database:** For a balance of structure and flexibility (PostgreSQL/JSONB).
 - **AI:**
   - **Default:** Use Google's Gemini for both text and image generation.
   - Leverage best-in-class third-party APIs for core GenAI (image generation, possibly LLM for assistant). Build custom logic for agent orchestration and workflow, not foundational models.
-  - Optionally support use of [GitHub Models](https://github.com/features/models) to find and experiment with AI models for free.
+  - Optionally support use of [GitHub Models](https://github.com/features/models) to find and experiment with AI models for free; see Google AI Edge Gallery for locally run LLMs.
 - **PDF Generation:** Use a proven, robust library (implementing both, but for v0.1 the focus is on pdf-lib; puppeteer for HTML-to-PDF is to be an addition for V1.0 -- make it work).
 - **Persistence:** Standard database for user accounts, projects, preferences, asset metadata.
 
