@@ -1,6 +1,12 @@
-# Deprecated Tests
+# AI Agent Test Artifacts
 
-These tests were moved here on July 13, 2025, as they were identified as low-value, ceremonial tests that:
+These tests have been preserved as historical examples of problematic AI agent-generated tests. They serve as documentation of what agents SHOULD NOT do when implementing tests.
+
+> **Note:** These files have been moved to `/docs/addenda/client_trash-test/` to preserve the history of AI agent test generation attempts and their failure modes.
+
+## What's Wrong With These Tests
+
+These tests represent common pitfalls in AI-generated test implementations:
 
 1. Only validated environment variable presence
 2. Tested error message strings (brittle tests)
