@@ -13,6 +13,20 @@
 - [ ] Remove or fix any failing core tests
 - [ ] Clean up remaining AI-related test fragments
 
+#### Test Results & Fixes Log
+
+> Use this section to record the outcome of pre-AI integration test runs, including any failures, fixes applied, and confirmation of baseline stability.
+
+**Latest Test Run:**
+
+- Date: 2025-07-13
+- Summary of results: Ran only meaningful test files in client/**tests** (excluding trash). YearlyCalendarGrid, pdfExport, and smoke tests passed. CalendarCreator and themeGeneration.integration tests failed.
+- Issues found:
+  - CalendarCreator.test.tsx failed due to missing 'pdf-lib' module in shared/utils/pdfExport.ts.
+  - themeGeneration.integration.test.ts failed due to no test defined in the suite.
+- Fixes applied: None yet. Next steps are to resolve missing module in CalendarCreator test and add/define tests in themeGeneration.integration test.
+- Baseline stability confirmation: Partial. Core grid, PDF export, and smoke tests are stable; some integration tests require fixes for full baseline stability.
+
 ### Phase 2: Integration Testing
 
 - [ ] Implement real Gemini API integration tests
