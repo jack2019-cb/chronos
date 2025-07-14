@@ -121,11 +121,44 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## Testing
 
+### Testing Philosophy & Unit Test Expectations
+
+**Documentation Requirement:**
+
+Every unit test in `client/__tests__` must have a corresponding `.md` file (e.g., `smoke.test.md`) that documents:
+
+- The test's purpose
+- Mocking philosophy
+- Actionables performed by the test
+- Hallmarks of a good unit test
+
+A unit test cannot be created or considered valid unless this detailed documentation exists and is kept up to date. This ensures clarity, maintainability, and validation of the test's intent and quality.
+
+All unit tests in this project are designed to confirm that real business logic works as intended. This means each test should:
+
+- Validate the actual processing of options, structuring of content, handling of conditional inputs, and interactions with external libraries.
+- Use mocks only to isolate the function from external network dependencies (such as `fetch`), ensuring tests run quickly and reliably.
+- Avoid excessive mocking of internal logic, so the test suite provides true confidence in the code's behavior.
+
+**In practice:**
+
+- Each test in `client/__tests__` targets meaningful logic—such as calendar rendering, event handling, theme generation, and PDF export—rather than superficial implementation details.
+- Mocks are employed only for network calls or external APIs, never for core business logic or internal data flow.
+- This approach ensures the suite is fast, reliable, and genuinely effective at catching regressions and confirming correct behavior.
+
+**Hallmarks of a good unit test in this codebase:**
+
+- Tests real substance, not just surface rendering or trivial outputs.
+- Isolates only true external dependencies.
+- Runs quickly and deterministically.
+
 The project uses Jest and React Testing Library for testing. The test setup includes:
 
 - SWC-based transformation for TypeScript and JSX
 - Proper mocking of Next.js components and features
 - Jest DOM matchers for component testing
+
+---
 
 ### Running Tests
 
