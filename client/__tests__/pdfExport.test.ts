@@ -16,5 +16,7 @@ describe("exportToPDF utility", () => {
     ).not.toThrow();
   });
 
-  // Add more tests as the utility grows
+  // TODO [OPEN ISSUE]:
+  // Further actionables (PDF content validation, output quality, error handling) will be implemented
+  // once exportToPDF is no longer a placeholder and real PDF logic is available.
 });

@@ -35,3 +35,9 @@ Mocks are used only for external dependencies, such as file system or network op
 - Tests real substance: PDF generation from calendar data.
 - Isolates only true external dependencies (none in this test).
 - Runs quickly and deterministically.
+
+---
+
+**Test & Documentation Review Note**
+
+> ⚠️ Reviewed: As of 2025-07-14, pdfExport.test.ts was reviewed and found to only cover basic existence and error-free execution. Full approval is pending real PDF logic and deeper actionable coverage. This note is invalidated if the documentation or implementation changes.
