@@ -20,12 +20,18 @@
 **Latest Test Run:**
 
 - Date: 2025-07-13
-- Summary of results: Ran only meaningful test files in client/**tests** (excluding trash). YearlyCalendarGrid, pdfExport, and smoke tests passed. CalendarCreator and themeGeneration.integration tests failed.
+- Summary of results: Progress made with CalendarCreator tests now passing. All 3 test cases succeeded (UI rendering, event adding, month toggling).
 - Issues found:
-  - CalendarCreator.test.tsx failed due to missing 'pdf-lib' module in shared/utils/pdfExport.ts.
-  - themeGeneration.integration.test.ts failed due to no test defined in the suite.
-- Fixes applied: None yet. Next steps are to resolve missing module in CalendarCreator test and add/define tests in themeGeneration.integration test.
-- Baseline stability confirmation: Partial. Core grid, PDF export, and smoke tests are stable; some integration tests require fixes for full baseline stability.
+  - Test coverage below thresholds, particularly in utils directory
+  - pdfExport.ts and other utilities showing 0% coverage
+  - themeGeneration.integration.test.ts still needs test definitions
+- Fixes applied:
+  - Successfully resolved pdf-lib dependency issue
+  - CalendarCreator test suite now passing (3/3 tests)
+- Next steps:
+  - Write tests for pdfExport.ts and other utilities to meet coverage requirements
+  - Add test definitions for themeGeneration.integration suite
+- Baseline stability confirmation: Improving. Core UI tests passing, but coverage needs work.
 
 ### Phase 2: Integration Testing
 
