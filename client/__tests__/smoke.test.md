@@ -17,3 +17,9 @@ No mocks are used, as the test does not interact with external dependencies. It 
 - Tests real substance: the integrity of the test environment.
 - No external dependencies to isolate.
 - Runs quickly and deterministically.
+
+---
+
+**Test & Documentation Review Stamp**
+
+> ✅ Verified: As of 2025-07-14, the implementation of smoke.test.ts fully meets the documented spec above. All actionables are covered by meaningful tests. If this documentation is changed, this approval stamp is invalidated and a new review is required.

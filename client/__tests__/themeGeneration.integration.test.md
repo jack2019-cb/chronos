@@ -35,3 +35,9 @@ Mocks are used only for external dependencies, such as AI API calls. Internal lo
 - Tests real substance: theme generation and application.
 - Isolates only true external dependencies (AI APIs).
 - Runs quickly and deterministically.
+
+---
+
+**Test & Documentation Review Note**
+
+> ⚠️ Reviewed: As of 2025-07-14, this test and its feature are pending implementation. Full review and approval will be required once the theme generation flow is available. This note is invalidated if the documentation or implementation changes.
