@@ -3,11 +3,9 @@
   "image": "mcr.microsoft.com/devcontainers/javascript-node:22-bullseye",
 
   "waitFor": "onCreateCommand",
-  "updateContentCommand": "cd client && npm install && cd ../server && npm install express puppeteer && npm install --save-dev nodemon && cd ..",
-
-  "postCreateCommand": "npm install -g concurrently",
+  "postCreateCommand": "cd shared && npm install && cd ../client && npm install && cd ../server && npm install && cd ..",
   "postAttachCommand": {
-    "client + server": "concurrently 'cd ./client && npm run dev' 'cd ./server && npm run dev'"
+    "client + server": "cd shared && npx concurrently 'cd ../client && npm run dev' 'cd ../server && npm run dev'"
   },
 
   // --- VS CODE CUSTOMIZATIONS ---
@@ -57,7 +55,7 @@
   },
 
   // --- PORT FORWARDING ---
-  "forwardPorts": [5173, 3000, 5432],
+  "forwardPorts": [3000, 5000, 5432],
   "portsAttributes": {
     "3000": {
       "label": "client/FE (React/Next.js)",
