@@ -49,6 +49,17 @@ Historical issues and completed work can be found in the archive directory (e.g.
   - [ ] Implement proper error logging
   - [ ] Add transaction handling guidance
 
+#### Server Health Check Response (2025-07-15)
+
+- **Priority:** High
+- **Description:** Server health check endpoint not responding within expected timeframe
+- **Tasks:**
+  - [ ] Investigate server response timeout on /health endpoint
+  - [ ] Add server startup health diagnostics
+  - [ ] Implement connection timeout handling
+  - [ ] Add health check metrics (response time, uptime, etc.)
+  - [ ] Document expected health check response times
+
 ### CI/CD Improvements (2025-06-10)
 
 1. **Set up Playwright integration tests in CI**
