@@ -7,6 +7,48 @@ Historical issues and completed work can be found in the archive directory (e.g.
 
 ## Active Issues
 
+### Server Improvements (2025-07-15)
+
+#### Error Handling Enhancement
+
+- **Priority:** Medium
+- **Description:** Current error handling in `app.ts` needs improvement
+- **Tasks:**
+  - [ ] Expand error handler beyond CalendarError
+  - [ ] Add development-mode specific error messages
+  - [ ] Implement proper error logging strategy
+  - [ ] Add request ID tracking for better error tracing
+
+#### Project Management API Completion
+
+- **Priority:** High
+- **Description:** Project management endpoints need full CRUD implementation
+- **Tasks:**
+  - [ ] Implement UPDATE endpoint
+  - [ ] Implement DELETE endpoint
+  - [ ] Add pagination for list endpoint
+  - [ ] Add sorting and filtering capabilities
+
+#### Input Validation Enhancement
+
+- **Priority:** High
+- **Description:** Current validation needs to be more robust
+- **Tasks:**
+  - [ ] Implement express-validator middleware
+  - [ ] Add comprehensive validation for all endpoints
+  - [ ] Create reusable validation schemas
+  - [ ] Add sanitization for user inputs
+
+#### Database Error Handling
+
+- **Priority:** Medium
+- **Description:** Database error handler in `errors.ts` is incomplete
+- **Tasks:**
+  - [ ] Complete switch statement for all Prisma error codes
+  - [ ] Add proper error messages for each error type
+  - [ ] Implement proper error logging
+  - [ ] Add transaction handling guidance
+
 ### CI/CD Improvements (2025-06-10)
 
 1. **Set up Playwright integration tests in CI**

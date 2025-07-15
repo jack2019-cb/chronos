@@ -18,6 +18,30 @@
   - Create new calendars with events
   - Update existing calendars
   - Delete calendars
+
+### Known Issues and Planned Improvements
+
+> For detailed tracking of these issues, see `docs/addenda/issues.md`
+
+1. **Error Handling Enhancement**
+
+   - Current error handling needs expansion beyond CalendarError
+   - Development-mode specific error messages needed
+
+2. **Project Management API Completion**
+
+   - UPDATE and DELETE endpoints pending implementation
+   - Pagination needed for list endpoint
+
+3. **Input Validation**
+
+   - Express-validator implementation planned
+   - More comprehensive validation needed
+
+4. **Database Error Handling**
+   - Incomplete Prisma error code handling
+   - Transaction handling guidance needed
+
 - TypeScript migration for calendar routes
 - Comprehensive test coverage (100% statements, 84.21% branches)
 - Error handling for all endpoints
