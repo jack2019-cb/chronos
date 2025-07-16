@@ -24,10 +24,14 @@ Historical issues and completed work can be found in the archive directory (e.g.
 - **Priority:** High
 - **Description:** Project management endpoints need full CRUD implementation
 - **Tasks:**
-  - [ ] Implement UPDATE endpoint
-  - [ ] Implement DELETE endpoint
+  - [x] Implement UPDATE endpoint
+  - [x] Implement DELETE endpoint
   - [ ] Add pagination for list endpoint
+    - Note: The list endpoint currently returns all projects with no pagination. No query parameters for pagination are implemented.
+    - Next Steps: Add support for limit/offset (or page/size) query parameters in the route and service.
   - [ ] Add sorting and filtering capabilities
+    - Note: The list endpoint sorts by updatedAt descending by default, but does not support dynamic sorting or filtering via query parameters.
+    - Next Steps: Add support for sort and filter query parameters in the route and service.
 
 #### Input Validation Enhancement
 
