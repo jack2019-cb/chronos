@@ -118,10 +118,10 @@ Historical issues and completed work can be found in the archive directory (e.g.
 - **Priority:** High
 - **Description:** Current GUI implementation does not match vision document layout
 - **Tasks:**
-  - [ ] Consolidate customization controls into sidebar (currently split between aside and sidebar)
-  - [ ] Implement missing Bottom Bar component for tips, status, and quick actions
-  - [ ] Properly structure main layout (TopBar, Sidebar, CalendarArea, BottomBar)
-  - [ ] Implement proper visual containment for each major component
+  - [x] Consolidate customization controls into sidebar (currently split between aside and sidebar)
+  - [x] Implement missing Bottom Bar component for tips, status, and quick actions
+  - [x] Properly structure main layout (TopBar, Sidebar, CalendarArea, BottomBar)
+  - [x] Implement proper visual containment for each major component
 
 #### Missing Features
 
