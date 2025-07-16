@@ -2,22 +2,16 @@
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background: #f8f9fa;
-}
-
-.calendar-plus-topbar {
-  height: 56px;
-  background: #22223b;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  padding: 0 2rem;
-  font-size: 1.25rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  width: 100vw;
+  overflow: hidden;
+  background: var(--background-primary);
 }
 
 .calendar-plus-main {
   display: flex;
+  flex: 1;
+  overflow: hidden;
+  position: relative;
   flex: 1;
   min-height: 0;
 }

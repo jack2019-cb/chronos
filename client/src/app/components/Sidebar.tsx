@@ -1,11 +1,75 @@
 "use client";
 
 import React from "react";
+import { CustomizationTemplate } from "./CustomizationSelectors";
+import styles from "./Sidebar.module.css";
+import {
+  ThemeSelector,
+  FontSelector,
+  BackgroundSelector,
+} from "./CustomizationSelectors";
 
-const Sidebar: React.FC = () => {
+interface SidebarProps {
+  templates: CustomizationTemplate[];
+  themeId: string;
+  fontId: string;
+  backgroundId: string;
+  onThemeSelect: (id: string) => void;
+  onFontSelect: (id: string) => void;
+  onBackgroundSelect: (id: string) => void;
+}
+
+const Sidebar: React.FC<SidebarProps> = ({
+  templates,
+  themeId,
+  fontId,
+  backgroundId,
+  onThemeSelect,
+  onFontSelect,
+  onBackgroundSelect,
+}) => {
   return (
-    <aside className="calendar-plus-sidebar">
-      <div>Sidebar (Templates, Themes, Colors, etc.)</div>
+    <aside className={styles.sidebar}>
+      <nav className={styles.nav}>
+        <div className={styles.section}>
+          <ThemeSelector
+            templates={templates}
+            selectedId={themeId}
+            onSelect={onThemeSelect}
+          />
+        </div>
+        <div className={styles.section}>
+          <FontSelector
+            templates={templates}
+            selectedId={fontId}
+            onSelect={onFontSelect}
+          />
+        </div>
+        <div className={styles.section}>
+          <BackgroundSelector
+            templates={templates}
+            selectedId={backgroundId}
+            onSelect={onBackgroundSelect}
+          />
+        </div>
+        {/* Placeholders for other sections */}
+        <div className={styles.section}>
+          <h3>Colors</h3>
+          <div className={styles.comingSoon}>Coming soon</div>
+        </div>
+        <div className={styles.section}>
+          <h3>Stickers</h3>
+          <div className={styles.comingSoon}>Coming soon</div>
+        </div>
+        <div className={styles.section}>
+          <h3>Notes/Photos</h3>
+          <div className={styles.comingSoon}>Coming soon</div>
+        </div>
+        <div className={styles.section}>
+          <h3>Settings</h3>
+          <div className={styles.comingSoon}>Coming soon</div>
+        </div>
+      </nav>
     </aside>
   );
 };
