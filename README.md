@@ -47,13 +47,15 @@ For detailed configuration and setup instructions, see `docs/CONFIGURATION.md`.
 - **Unified Testing Experience:**
   All client-side tests are powered by Jest for seamless React/Next.js development. All server-side tests run on Vitest for fast, modern Node.js/TypeScript workflows. This clear separation ensures reliability, speed, and best-in-class tooling for every part of the stack.
 - **Module System:** ~~ES Modules (ESM) standardized across all packages for:~~
-    ~~- Native async/await support without transpilation~~
-    ~~- Better tree-shaking and build optimization~~
-    ~~- Future-proof codebase aligned with modern JavaScript~~
-    ~~- Consistent import/export syntax across frontend and backend~~
+  ~~- Native async/await support without transpilation~~
+  ~~- Better tree-shaking and build optimization~~
+  ~~- Future-proof codebase aligned with modern JavaScript~~
+  ~~- Consistent import/export syntax across frontend and backend~~
 - **Frontend:** Modern, component-based JS framework (React/Next.js). Focus on a clean, responsive UI.
 - **Backend:** Scalable platform (Node.js/Express). Ready to orchestrate multiple API calls.
 - **Database:** For a balance of structure and flexibility (PostgreSQL/JSONB).
+  - Development uses Prisma's cloud PostgreSQL service for stability and simplified container setup
+  - Production deployments can use any PostgreSQL-compatible service (Azure Database, AWS RDS, etc.)
 - **AI:**
   - **Default:** Use Google's Gemini for both text and image generation.
   - Leverage best-in-class third-party APIs for core GenAI (image generation, possibly LLM for assistant). Build custom logic for agent orchestration and workflow, not foundational models.
