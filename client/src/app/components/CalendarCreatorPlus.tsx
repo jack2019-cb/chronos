@@ -1,15 +1,11 @@
 "use client";
 
 import React from "react";
-import {
-  ThemeSelector,
-  FontSelector,
-  BackgroundSelector,
-  CustomizationTemplate,
-} from "./CustomizationSelectors";
+import { CustomizationTemplate } from "./CustomizationSelectors";
 import { useCustomization } from "./CustomizationContext";
 import Sidebar from "./Sidebar";
 import TopBar from "./TopBar";
+import BottomBar from "./BottomBar";
 import CalendarArea from "./CalendarArea";
 import styles from "./CalendarCreatorPlus.module.css";
 import { CalendarViewProvider } from "./CalendarViewContext";
@@ -57,28 +53,20 @@ const CalendarCreatorPlus: React.FC = () => {
   return (
     <CalendarViewProvider>
       <div className={styles["calendar-plus-root"]}>
-        <aside>
-          <ThemeSelector
-            templates={templates}
-            selectedId={themeId}
-            onSelect={setThemeId}
-          />
-          <FontSelector
-            templates={templates}
-            selectedId={fontId}
-            onSelect={setFontId}
-          />
-          <BackgroundSelector
-            templates={templates}
-            selectedId={backgroundId}
-            onSelect={setBackgroundId}
-          />
-        </aside>
         <TopBar />
         <div className={styles["calendar-plus-main"]}>
-          <Sidebar />
+          <Sidebar
+            templates={templates}
+            themeId={themeId}
+            fontId={fontId}
+            backgroundId={backgroundId}
+            onThemeSelect={setThemeId}
+            onFontSelect={setFontId}
+            onBackgroundSelect={setBackgroundId}
+          />
           <CalendarArea />
         </div>
+        <BottomBar />
       </div>
     </CalendarViewProvider>
   );

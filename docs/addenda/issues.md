@@ -111,6 +111,36 @@ Historical issues and completed work can be found in the archive directory (e.g.
    - Document required secrets and environment variables
    - Timebox: 1 hour
 
+### GUI Layout Alignment (2025-07-16)
+
+#### Layout Structure Misalignment
+
+- **Priority:** High
+- **Description:** Current GUI implementation does not match vision document layout
+- **Tasks:**
+  - [ ] Consolidate customization controls into sidebar (currently split between aside and sidebar)
+  - [ ] Implement missing Bottom Bar component for tips, status, and quick actions
+  - [ ] Properly structure main layout (TopBar, Sidebar, CalendarArea, BottomBar)
+  - [ ] Implement proper visual containment for each major component
+
+#### Missing Features
+
+- **Priority:** High
+- **Description:** Several key features from GUI vision are not implemented
+- **Tasks:**
+  - [ ] Complete Sidebar implementation with all specified features:
+    - Templates
+    - Themes
+    - Colors
+    - Fonts
+    - Backgrounds
+    - Stickers
+    - Notes/Photos
+    - Settings
+  - [ ] Implement drag/drop events in calendar area
+  - [ ] Add live preview functionality
+  - [ ] Implement Bottom Bar features (tips, status, quick actions)
+
 <!-- Add new issues above this line -->
 
 ## Upcoming Challenges
