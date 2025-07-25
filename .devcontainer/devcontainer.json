@@ -3,7 +3,6 @@
 
   // --- DOCKER COMPOSE INTEGRATION ---
   // Point to your docker-compose.yml file
-  // "dockerComposeFile": "../docker-compose.yml",
   "dockerComposeFile": "docker-compose.yml",
 
   // Specify which service in the docker-compose file is the dev container
@@ -13,13 +12,6 @@
   "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
 
   // --- LIFECYCLE HOOKS ---
-  // Automates the creation of the .env file -- a necessary step before an application can be run, as it might contain crucial configuration information -- ensuring the file is present in the environment without needing to create it manually.
-  /**
-  "initializeCommand": {
-    "env-setup": "touch .env"
-  },
-  **/
-
   // Wait for the postCreateCommand to complete before allowing connection.
   "waitFor": "onCreateCommand",
 
@@ -33,7 +25,9 @@
   },
   **/
   "postAttachCommand": {
-    "client + server + db": "cd shared && npx concurrently --kill-others-on-fail --name \"client,server,db\" --prefix-colors \"blue,green,magenta\" \"cd ../client && npm run dev\" \"cd ../server && npm run dev\" \"pg_isready -h $DB_HOST -p $DB_PORT || echo 'PostgreSQL not ready\\!'\""
+    //x"client + server + db": "cd shared && npx concurrently --kill-others-on-fail --name \"client,server,db\" --prefix-colors \"blue,green,magenta\" \"cd ../client && npm run dev\" \"cd ../server && npm run dev\" \"pg_isready -h $DB_HOST -p $DB_PORT || echo 'PostgreSQL not ready\\!'\""
+    //x"client + server + db": "cd shared && npx concurrently --kill-others-on-fail --name \"client,server,db\" --prefix-colors \"blue,green,magenta\" \"cd ../client && npm run dev\" \"cd ../server && npm run dev\" \"pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB || echo 'PostgreSQL not ready\\!'\"
+    "client + server": "cd shared && npx concurrently 'cd ../client && npm run dev' 'cd ../server && npm run dev'"
   },
 
   // --- VS CODE CUSTOMIZATIONS ---
