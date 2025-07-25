@@ -1,14 +1,27 @@
-# vanilla
+# CHRONOS (Strawberry ⇠ Vanilla)
 
-Home to ChronosCraft AI
-
-## ChronosCraft AI
-
-> **Babel Notice (May 2025):**
->
-> The custom Babel configuration (`client/babel.config.js`) was removed to restore compatibility with Next.js 15+ and SWC-based features. No custom Babel plugins or transforms were in use. See `client/BABEL_REMOVAL.md` for details.
+Home to **ChronosCraft AI**
 
 Fluid and magic-like crafting of stunningly unique, personalized, printable calendars using Generative AI.
+
+## Development Philosophy
+
+We maintain stability through structured change management:
+
+1. Discuss and understand the full context
+2. Document agreements and decisions
+3. Create actionable, phased plans
+4. Implement incrementally
+
+All contributors, human and AI, must:
+
+- Start with README.md
+- Respect project structure
+- Follow established patterns
+- Propose changes that align with architecture
+
+This approach prevents destabilizing changes and maintains our clean, component-based architecture.
+🚨 **All contributors must read and follow the Development Philosophy before making any changes.** 🚨
 
 ## Overview
 
@@ -19,24 +32,17 @@ ChronosCraft AI is a web application where users co-create beautiful, personaliz
 
 For detailed technical and product documentation, see the respective `README.md` files in each subdirectory.
 
-## Quick Start
-
-1. Set up your development environment (see `docs/CONFIGURATION.md`)
-2. Install dependencies for both client and server
-3. Start the development servers
-
-## Documentation
-
-- 📚 `docs/CONFIGURATION.md` - Setup and configuration guide
-- 🔧 `docs/API.md` - API documentation and endpoints
-- 👥 `docs/CONTRIBUTING.md` - Development workflow and guidelines
-- 📝 `docs/CHANGELOG.md` - Version history and changes
-
 ## Project Structure
 
 ```
+.devcontainer/ # Development container configuration
+.github/     # GitHub Actions workflows
 client/      # Next.js frontend
 server/      # Express backend
+shared/      # Shared code (e.g., types, utilities)
+scripts/    # Utility scripts (e.g., setup, build)
+data/        # SQLite database
+samples/     # Sample files (e.g., PDFs, PNGs)
 docs/        # Project documentation
 ```
 
@@ -74,7 +80,18 @@ For detailed configuration and setup instructions, see `docs/CONFIGURATION.md`.
 - Do not commit secrets or sensitive values to the repository.
 - See `CONTRIBUTING.md` for more details on environment variable management.
 
-## Integration Testing with start-dev.sh
+## Documentation
+
+- 👥 `docs/CONTRIBUTING.md` - Development workflow and guidelines
+- 📝 `docs/CHANGELOG.md` - Version history and changes
+
+## Quick Start
+
+> **Babel Notice (May 2025):**
+>
+> The custom Babel configuration (`client/babel.config.js`) was removed to restore compatibility with Next.js 15+ and SWC-based features. No custom Babel plugins or transforms were in use. See `client/BABEL_REMOVAL.md` for details.
+
+### Integration Testing with start-dev.sh
 
 To run full integration (end-to-end) tests across both backend and frontend, use the `start-dev.sh` script in the project root. This script:
 
