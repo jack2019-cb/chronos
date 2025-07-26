@@ -24,11 +24,16 @@
   "postAttachCommand": {
     "client + server": "cd shared && npx concurrently 'cd ../client && npm run dev' 'cd ../server && npm run dev'"
   },
-  **/
+  **
   "postAttachCommand": {
     //x"client + server + db": "cd shared && npx concurrently --kill-others-on-fail --name \"client,server,db\" --prefix-colors \"blue,green,magenta\" \"cd ../client && npm run dev\" \"cd ../server && npm run dev\" \"pg_isready -h $DB_HOST -p $DB_PORT || echo 'PostgreSQL not ready\\!'\""
     //x"client + server + db": "cd shared && npx concurrently --kill-others-on-fail --name \"client,server,db\" --prefix-colors \"blue,green,magenta\" \"cd ../client && npm run dev\" \"cd ../server && npm run dev\" \"pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB || echo 'PostgreSQL not ready\\!'\"
     "client + server": "cd shared && npx concurrently 'cd ../client && npm run dev' 'cd ../server && npm run dev'"
+    "client + server": "bash ./start-dev.sh"
+  },
+  **/
+  "postAttachCommand": {
+    "client + server": "bash ./start-dev.sh"
   },
 
   // --- VS CODE CUSTOMIZATIONS ---
