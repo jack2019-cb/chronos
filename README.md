@@ -1,4 +1,4 @@
-# CHRONOS (Strawberry ⇠ Vanilla)
+# CHRONOS (CHR 0725-0907v)
 
 Home to **ChronosCraft AI**
 

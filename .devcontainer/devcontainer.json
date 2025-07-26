@@ -15,8 +15,9 @@
   // Wait for the postCreateCommand to complete before allowing connection.
   "waitFor": "onCreateCommand",
 
-  // Install dependencies in all workspaces (shared, client, server)
-  "postCreateCommand": "cd shared && npm install && cd ../client && npm install && cd ../server && npm install && cd ..",
+  // Install dependencies in all workspaces (server, shared, client)
+  //"postCreateCommand": "cd shared && npm install && cd ../client && npm install && cd ../server && npm install && cd ..",
+  "postCreateCommand": "cd shared && npm install && cd ../server && npm install && cd ../client && npm install && cd ..",
 
   // Run client and server development servers concurrently after attaching.
   /**
@@ -83,8 +84,12 @@
       "label": "client/FE (React/Next.js)",
       "onAutoForward": "openPreview"
     },
-    "5000": { "label": "server/BE (Node.js/Express)" },
-    "5432": { "label": "database (PostgreSQL)" }
+    "5000": { 
+      "label": "server (Node.js/Express)" 
+    },
+    "5432": { 
+      "label": "database (PostgreSQL)" 
+    }
   },
 
   // --- GENERAL SETTINGS ---

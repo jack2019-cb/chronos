@@ -20,8 +20,8 @@ const mockPngBuffer = new Uint8Array([
   0xE5, 0x27, 0xDE, 0x48, // CRC
   0x00, 0x00, 0x00, 0x00, // IEND length
   0x49, 0x45, 0x4E, 0x44, // "IEND"
-  0xAE, 0x42, 0x60, 0x82  // CRC
-]);exportCalendarToPDF, PDFExportOptions } from "../utils/pdfExport";
+  0xAE, 0x42, 0x60, 0x82,  // CRC
+import { exportCalendarToPDF, PDFExportOptions } from "../utils/pdfExport";
 import { PDFDocument, PageSizes } from "pdf-lib";
 
 // Create a mock PNG buffer that looks like real PNG data
