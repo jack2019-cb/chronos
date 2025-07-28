@@ -2,13 +2,21 @@
   "compilerOptions": {
     "target": "ES2020",
     "module": "commonjs",
-    "rootDir": "./server",
+    "rootDir": "..",
+    "baseUrl": "..",
+    "paths": {
+      "@shared/*": ["shared/*"]
+    },
     "outDir": "./dist",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "allowJs": true,
+    "sourceMap": true
   },
-  "include": ["server/**/*.ts", "__tests__/**/*.ts"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["**/*.ts", "**/*.js"],
+  "exclude": ["node_modules", "dist", "coverage"]
 }
