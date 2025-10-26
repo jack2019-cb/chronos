@@ -40,502 +40,108 @@ Client Request
 └────────────────────────────┘                                │
 ```
 
-## Implementation Progress
+## Backend logic: concise status (archived full doc to `docs/archive/BE2genie_logic-20251026-120000.md`)
 
-### Completed Phases
+Last updated: 2025-10-26T12:00:00Z
 
-**Phase 0** — Prep & safety ✅ (20 OCT 2025)
+Purpose
 
-- Feature flag implemented: `GENIE_PERSISTENCE_ENABLED`
-- Normalization utility added
-- Test infrastructure in place
-- Verified no runtime changes when flag is false
+- Concise record of what was implemented for the `/prompt` → generation flow, what is complete, and what remains before we enable persistence widely.
 
-**Phase 1** — Read-only DB lookup ✅ (21 OCT 2025)
+High-level flow (single line)
 
-- Implemented normalized DB lookup in genieService
-- Cache hit returns existing content
-- Verified no DB writes on lookup path
+- POST /prompt → `server/genieService.generate(prompt)` → service builds AI response (mock/real) → optional persistence via `server/utils/dbUtils` (Prisma upsert on normalized hash) → return `{ success: true, data }`.
 
-**Phase 2** — Persistence in genieService ✅ (21 OCT 2025)
+Completed (phases and concrete artifacts)
 
-- Added persist capability behind feature flag
-- Implemented non-fatal error handling
-- Maintained dual-write safety during rollout
+- Phase 0–3: feature flag `GENIE_PERSISTENCE_ENABLED`, normalization utility, controller switched to delegate to `genieService`, and test scaffolding — completed.
+- Phase 4: DB dedupe and upsert — completed and merged to `aetherV0/anew-default-basic`. Concrete items present:
+  - Prisma schema additions for `normalizedHash`/`normalizedText` and generated migration under `server/prisma/migrations/`.
+  - `server/utils/dbUtils.js` implements upsert by normalized hash (with unit-test friendly fallback).
+  - `server/genieService.js` wired to persist (behind flag) and compatibility wiring for test mode.
+  - `server/utils/aiMockResponse.js` (multi-page envelope helper) and small dedupe scaffolding.
 
-**Phase 3** — Remove controller DB writes ✅ (22 OCT 2025)
+Status confidence and short note
 
-- Successfully migrated persistence to genieService
-- Removed DB writes from controller
-- Validated end-to-end behavior unchanged
+- The Phase 4 code + migration exists and has been merged. There remains a verification gap: run full server tests and the CI Postgres concurrency job to prove the upsert/dedupe behavior under contention. Until those tests are observed green in CI/staging, consider the work implemented but not yet fully verified in production-like conditions.
 
-**Phase 4** — DB dedupe (migration + upsert) ✅ (24 OCT 2025)
+Only remaining (pending) work — prioritized and succinct
 
-Purpose: enforce DB-level uniqueness for the normalized prompt so identical prompts cannot create duplicate Prompt rows. This enables atomic upsert behavior and safer concurrency.
+1. Verify tests & CI with Postgres (highest priority)
+   - Run full server test suite locally and in CI with Postgres available; ensure any test-mode wiring fixes are stable. Estimate: 0.5–1.0 hr.
+2. CI Postgres concurrency validation
+   - Add/verify a CI job that starts Postgres, runs `prisma migrate deploy` and the concurrency integration test that fires parallel identical prompts and asserts a single Prompt row. Estimate: 1.0–2.5 hr (write workflow + fix CI issues).
+3. Add/finish unit tests for `dbUtils.createPrompt` upsert behavior (mock Prisma + fallback). Estimate: 1.0–3.0 hr.
+4. Dedupe for non-empty DBs (only if any environment contains non-sample data)
+   - Run `server/scripts/dedupe_prompts.js` dry-run and reconcile prior to applying unique constraint on populated DBs. (User confirmed no worthwhile data exists; if true this step is a quick verification.) Estimate: 0.5–2.0 hr if needed.
+5. Gate and monitor rollout
+   - Apply migrations in staging, enable `GENIE_PERSISTENCE_ENABLED=1` in staging, record baseline prompt-count, and observe for 3–6 hours. Estimate: 0.5 hr hands-on + 3–6 hr observation.
 
-Minimal plan (safe, since current DB starts empty):
+Quick reminders (useful)
 
-- Add a normalized unique column to the Prisma `Prompt` model. Recommended: add a `normalizedHash String @unique` (and optional `normalizedText String`). Storing a short SHA256/hex of the normalized text avoids indexing large text fields.
-- Generate Prisma client and create/apply the migration.
-- Implement atomic upsert in `server/utils/dbUtils.js` using the normalized hash as the unique key (Prisma `upsert` or equivalent). Ensure the function returns `{ id }`.
-- Add unit tests that mock Prisma (use `_setPrisma`) to verify upsert behavior and basic dedupe semantics.
-- Add a small concurrency/integration test (run against ephemeral Postgres in CI) to validate no duplicates under parallel requests.
+- The repository includes safe fallbacks for local dev/tests (legacy `crud`/SQLite). Don't treat local green runs as proof of Postgres upsert safety — run the CI Postgres job.
+- Feature flag must remain OFF in production until CI/staging verification is green.
+- If you need me to add the CI workflow and concurrency test skeleton, say "Add CI job and concurrency test" and I will implement it.
 
-Acceptance: identical normalized prompts return the same `promptId`; no duplicate Prompt rows are created; existing functionality remains unchanged.
+Acceptance checklist (before enabling in production)
 
-Actionables (prioritized, with time estimates):
+- [ ] Full server test suite passes with merged Phase 4 changes.
+- [ ] CI Postgres concurrency test consistently green.
+- [ ] Any non-empty DBs have been deduped or verified empty.
 
-1. Create feature branch `feature/genie-phase4-dedupe` — 5–10 minutes
-2. Edit Prisma schema to add `normalizedHash` (and optional `normalizedText`) — 15–30 minutes
-3. Implement `upsert` in `server/utils/dbUtils.js` (use `normalizePrompt()` + SHA256) — 30–90 minutes
-4. Add unit tests for `dbUtils.createPrompt` upsert behavior (mock Prisma) — 1–3 hours
-5. Generate and apply Prisma migration in dev/staging (since DB is empty this can be applied directly) — 15–60 minutes
-6. Add a concurrency/integration test in CI against ephemeral Postgres and ensure `prisma migrate` runs in CI — 1–2 hours
-7. Open PR with schema change, shim update, and tests; run staging validation and merge when green — review + staging validation: ~1 day
+## Backend logic: concise status (archived full doc to `docs/archive/BE2genie_logic_2025-10-26T120000Z.md`)
 
-Notes:
+Last updated: 2025-10-26T12:00:00Z
 
-- Because the current DB contains zero prompt records, no dedupe script is required before applying the unique constraint. If that changes later, include a dedupe step before migration.
-- Keep the `GENIE_PERSISTENCE_ENABLED` feature flag OFF until migration and tests are validated in staging.
+Purpose
 
-Acceptance criteria (short): identical normalized prompts yield the same `promptId`; no DB duplicates; safe rollout behind the feature flag.
+- Concise record of what was implemented for the `/prompt` → generation flow, what is complete, and what remains before we enable persistence widely.
 
-### Phase 4 — progress (feature/genie-phase4-dedupe)
+High-level flow (single line)
 
-Summary: experimental Phase 4 work has been implemented on branch `feature/genie-phase4-dedupe` to add DB-level dedupe via a normalized hash and an upsert path. The core migration and shim changes are present in the workspace; tests were executed during iteration (see status below).
+- POST /prompt → `server/genieService.generate(prompt)` → service builds AI response (mock/real) → optional persistence via `server/utils/dbUtils` (Prisma upsert on normalized hash) → return `{ success: true, data }`.
 
-What was implemented
+Completed (phases and concrete artifacts)
 
-- Created feature branch `feature/genie-phase4-dedupe` and added scaffolding (`server/scripts/dedupe_prompts.js`, design notes).
-- Prisma schema updated: `server/prisma/schema.prisma` now contains `normalizedText` and `normalizedHash` (unique). A migration folder was created: `server/prisma/migrations/20251023195558_add_normalized_hash/`.
-- Prisma client was generated and a dev migration was created/applied locally (migration folder present in repository).
-- `server/utils/dbUtils.js` updated to compute a normalized form (via `utils/normalizePrompt`) and a SHA256 `normalizedHash`, then perform an atomic upsert using `prisma.prompt.upsert(...)`. A compatibility fallback exists so unit tests using a mocked Prisma can still run: when `upsert` is unavailable the code falls back to `p.prompt.create(...)`.
-- `server/genieService.js` updated so that when running under `NODE_ENV=test` the service prefers the legacy SQLite-backed `crud` module for persistence; this keeps the controller's CRUD APIs (which still use `crud`) and the persistence step in `genieService` operating against the same store during tests.
+- Phase 0–3: feature flag `GENIE_PERSISTENCE_ENABLED`, normalization utility, controller switched to delegate to `genieService`, and test scaffolding — completed.
+- Phase 4: DB dedupe and upsert — completed and merged to `aetherV0/anew-default-basic`. Concrete items present:
+  - Prisma schema additions for `normalizedHash`/`normalizedText` and generated migration under `server/prisma/migrations/`.
+  - `server/utils/dbUtils.js` implements upsert by normalized hash (with unit-test friendly fallback).
+  - `server/genieService.js` wired to persist (behind flag) and compatibility wiring for test mode.
+  - `server/utils/aiMockResponse.js` (multi-page envelope helper) and small dedupe scaffolding.
 
-Key files changed (local workspace)
+Status confidence and short note
 
-- `server/prisma/schema.prisma` — schema additions for normalized fields and unique index
-- `prisma/migrations/20251023195558_add_normalized_hash/*` — generated migration SQL
-- `server/utils/dbUtils.js` — upsert implementation + mock-friendly fallback
-- `server/genieService.js` — test-mode persistence wiring change
-- `server/scripts/dedupe_prompts.js` — dry-run dedupe script (scaffold)
+- The Phase 4 code + migration exists and has been merged. There remains a verification gap: run full server tests and the CI Postgres concurrency job to prove the upsert/dedupe behavior under contention. Until those tests are observed green in CI/staging, consider the work implemented but not yet fully verified in production-like conditions.
 
-Test status (iteration log)
+Only remaining (pending) work — prioritized and succinct
 
-- During iterative development the server test suite was run. At one point the test suite showed: 59 passed, 1 failing (an `aiService` test expecting stored prompt retrieval). The `genieService` persistence wiring was adjusted to prefer `crud` in test mode to address this mismatch; a focused test run after that change is pending in this session (local vitest invocation attempted but interrupted). A final test run in CI or locally is required to verify all tests are green.
+1. Verify tests & CI with Postgres (highest priority)
+   - Run full server test suite locally and in CI with Postgres available; ensure any test-mode wiring fixes are stable. Estimate: 0.5–1.0 hr.
+2. CI Postgres concurrency validation
+   - Add/verify a CI job that starts Postgres, runs `prisma migrate deploy` and the concurrency integration test that fires parallel identical prompts and asserts a single Prompt row. Estimate: 1.0–2.5 hr (write workflow + fix CI issues).
+3. Add/finish unit tests for `dbUtils.createPrompt` upsert behavior (mock Prisma + fallback). Estimate: 1.0–3.0 hr.
+4. Dedupe for non-empty DBs (only if any environment contains non-sample data)
+   - Run `server/scripts/dedupe_prompts.js` dry-run and reconcile prior to applying unique constraint on populated DBs. (User confirmed no worthwhile data exists; if true this step is a quick verification.) Estimate: 0.5–2.0 hr if needed.
+5. Gate and monitor rollout
+   - Apply migrations in staging, enable `GENIE_PERSISTENCE_ENABLED=1` in staging, record baseline prompt-count, and observe for 3–6 hours. Estimate: 0.5 hr hands-on + 3–6 hr observation.
 
-Remaining work (next steps)
+Quick reminders (useful)
 
-- Run the full server test suite locally (use local devDependencies) to confirm all tests pass with the new code. Resolve any remaining failing tests (if present). Estimated 0.5–1h.
-- Add dedicated unit tests for `dbUtils.createPrompt` upsert behavior (mock Prisma): verify duplicate detection, normalized variations dedupe, and fallback behavior. Estimated 1–3h.
-- Add a small integration/concurrency test that runs against ephemeral Postgres in CI to validate real upsert/dedup under parallel requests. Update CI to run `prisma migrate` before tests. Estimated 1–3h.
-- Consider preferring an injected `_injectedDbUtils` (when present) in `genieService` persistence path so that unit tests that inject a mock `dbUtils` continue to work reliably. This is low-risk and can be added quickly if needed.
-- Review migration & rollback plan, add a dedupe script (non-destructive) to prepare for migration in non-empty databases (scaffolding exists at `server/scripts/dedupe_prompts.js`).
+- The repository includes safe fallbacks for local dev/tests (legacy `crud`/SQLite). Don't treat local green runs as proof of Postgres upsert safety — run the CI Postgres job.
+- Feature flag must remain OFF in production until CI/staging verification is green.
+- If you need me to add the CI workflow and concurrency test skeleton, say "Add CI job and concurrency test" and I will implement it.
 
-If DB not empty (intent)
+Acceptance checklist (before enabling in production)
 
-- Intent: because this deployment is on a fresh project and there should be no historical Prompt/AIResult data, the agreed plan is to empty the relevant DB tables prior to finalizing Phase 4. This avoids complex dedupe runs for legacy data and ensures the unique `normalizedHash` constraint can be applied safely.
-- Scope: the tables to clear are, in dependency order: `PDFExport`, `Override`, `AIResult`, `Prompt`. Clearing will be done in CI/devcontainer with `DATABASE_URL` set and verified before applying the unique constraint in production.
-- Safety: this action is only to be taken on environments we control for this rollout (local dev, codespace, staging disposable DBs). Production DBs must follow the dedupe script and migration plan if they contain data.
-- Command (dev/devcontainer):
+- [ ] Full server test suite passes with merged Phase 4 changes.
+- [ ] CI Postgres concurrency test consistently green.
+- [ ] Any non-empty DBs have been deduped or verified empty.
+- [ ] Monitoring (prompt-count) in place and rollback plan ready.
 
-```bash
-# verify count
-printf 'SELECT COUNT(*) FROM "Prompt";' | npx --prefix server prisma db execute --stdin --schema server/prisma/schema.prisma --url "$DATABASE_URL"
+Summary estimate to reach strong production confidence (excluding monitoring window): ~4–12 hours of focused work; add 3–6 hours observation after staging flip.
 
-# if non-zero, delete in dependency order and re-check
-printf 'BEGIN;\nDELETE FROM "PDFExport";\nDELETE FROM "Override";\nDELETE FROM "AIResult";\nDELETE FROM "Prompt";\nCOMMIT;\nSELECT COUNT(*) FROM "Prompt";' | npx --prefix server prisma db execute --stdin --schema server/prisma/schema.prisma --url "$DATABASE_URL"
-```
-
-- After clearing, re-run `npx --prefix server prisma migrate dev` (or CI migration flow) and run the full test suite before enabling `GENIE_PERSISTENCE_ENABLED` in staging/production.
-
-Status of local git workspace (as of this update):
-
-```
-On branch feature/genie-phase4-dedupe
-Changes not staged for commit:
-   modified:   server/genieService.js
-
-Untracked files:
-   server/prisma/migrations/20251023195558_add_normalized_hash/
-```
-
-These files will be staged and committed in the feature branch.
-
----
-
-Last updated: October 23, 2025
-
----
-
-## Phase 4 — finalization checklist & Postgres notes (2025-10-24)
-
-**Short summary**
-
-- Phase 4 core work is implemented on branch `feature/genie-phase4-dedupe`: schema additions (`normalizedText`, `normalizedHash @unique`), a generated migration, and an upsert-based `createPrompt` in `server/utils/dbUtils.js`. Unit tests for the upsert path and the `aiMockResponse` helper are present and pass locally.
-- Remaining work is verification and safe rollout: run migrations against a Postgres instance and prove no duplicates under concurrency (CI/staging), then toggle the feature flag behind a controlled rollout.
-
-Postgres / devcontainer findings (exact)
-
-- The devcontainer provisions a Postgres service (`.devcontainer/docker-compose.yml` uses `postgres:16`) and forwards port `5432`.
-- `devcontainer.json` sets `remoteEnv.DATABASE_URL` as:
-  `postgresql://${localEnv:POSTGRES_USER}:${localEnv:POSTGRES_PASSWORD}@db:5432/${localEnv:POSTGRES_DB}` — i.e., the container will expose a working `DATABASE_URL` pointing at the `db` service if `POSTGRES_*` env vars are supplied by the host or Codespace.
-- Prisma in `server/prisma/schema.prisma` reads `env("DATABASE_URL")` — migrations/`prisma generate` must run with `DATABASE_URL` set to target Postgres.
-
-**Why this matters**
-
-- Local tests pass because the code gracefully falls back to legacy SQLite-backed `crud` when Postgres or `@prisma/client` isn't available; that does not prove the new migration/upsert behaves under real Postgres concurrency.
-
-What must be done to finish Phase 4 (prioritized, short)
-
-1. CI: enable Postgres for PR/staging and run migrations
-
-   - Add a Postgres service to the PR job or provide a `DATABASE_URL` secret. Ensure the job runs:
-     - `npx --prefix server prisma generate`
-     - `npx --prefix server prisma migrate deploy` (or `prisma migrate dev` for iterative runs)
-   - Only run the concurrency integration test when `DATABASE_URL` is present.
-
-2. Implement and run the concurrency integration test (in CI against the Postgres service)
-
-   - Flesh out `server/__tests__/concurrency.integration.test.mjs` to:
-     - Send N parallel `POST /prompt` requests (or directly call `dbUtils.createPrompt`) with identical prompt text.
-     - Assert there is exactly one `Prompt` row for the normalized hash and all responses reference the same `promptId`.
-   - Run this in CI repeatedly (small N, then larger) to validate the upsert is effective under contention.
-
-3. Migration safety for non-empty DBs
-
-   - If any environment has existing Prompt rows, run a dedupe pass first (scaffold: `server/scripts/dedupe_prompts.js`). The dedupe script should:
-     - compute normalized hashes for existing rows,
-     - merge/retain a single canonical Prompt per normalizedHash,
-     - optionally update references (ai_results) to the canonical prompt id.
-   - Run the dedupe dry-run, verify results, then apply migration that adds the unique constraint.
-
-4. Gate release with feature flag and staged rollout
-
-   - Keep `GENIE_PERSISTENCE_ENABLED` OFF until CI + staging pass.
-   - Enable in staging and monitor logs/row counts for anomalies. Then enable in production.
-
-5. Small polish (quick, low-risk)
-   - Add unit test(s) for `buildMockAiResponse` (already added) and `dbUtils.createPrompt` behaviors (mock + integration). Ensure mocks support `upsert` call shape used in tests.
-   - Consider accepting an injected `_injectedDbUtils` or `_injectedDb` in `genieService` for deterministic unit tests (optional but helpful).
-
-Acceptance criteria (one-liners)
-
-- Identical normalized prompts yield the same `promptId` (unit+integration tests).
-- No duplicate `Prompt` rows are created under parallel requests in CI (integration concurrency test passes).
-- Migration applied in staging with dedupe run (if needed) and `GENIE_PERSISTENCE_ENABLED` toggled only after verification.
-
-Quick commands / how to verify locally (devcontainer)
-
-1. Provide local `.env` (repo root) with:
-
-```
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=postgres
-POSTGRES_DB=dino_dev
-```
-
-2. Start the devcontainer or start the db service:
-
-```bash
-# inside Codespaces/Remote-Container: devcontainer should bring db up automatically
-docker compose -f .devcontainer/docker-compose.yml up -d db
-```
-
-3. Inside the devcontainer (or with `DATABASE_URL` set):
-
-```bash
-npx --prefix server prisma generate
-npx --prefix server prisma migrate dev --name phase4_add_normalized_hash
-bash server/scripts/db-health.sh   # quick connectivity/migration-check
-```
-
-CI snippet suggestion (high-level)
-
-- Use GitHub Actions `services: postgres` for the job and set `DATABASE_URL` in the job env to the service host (example):
-
-```yaml
-services:
-  postgres:
-    image: postgres:16
-    env:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: dino_ci_test
-    ports: ["5432:5432"]
-
-# then in job env:
-DATABASE_URL: postgresql://postgres:postgres@localhost:5432/dino_ci_test
-```
-
-Monitoring & rollback
-
-- Add a short metric/log: count of newly created Prompt rows per hour and alerts if growth > expected.
-- Rollback plan: 1) disable `GENIE_PERSISTENCE_ENABLED`, 2) revert schema change (drop unique constraint) if duplicates are found and dedupe cannot be reconciled quickly.
-
-Post-merge status (2025-10-26)
-
-- PR and CI: A PR was opened for the concurrency test and CI workflow; the concurrency integration test passed locally and the PR was created and merged into `aetherV0/anew-default-basic`. CI runs the Postgres + migrate + test job for additional verification. Monitor the PR CI job for any runner-specific failures.
-
-- Recommended quick staged rollout plan:
-  1.  Ensure `npx --prefix server prisma migrate deploy` ran in staging and succeeded (migrations applied).
-  2.  Enable the feature flag in staging (temporarily set `GENIE_PERSISTENCE_ENABLED=1`).
-  3.  Run the prompt-count monitor once and record the baseline (see `server/scripts/print_prompt_count.js`).
-  4.  After enabling, monitor prompt counts hourly for the first 3–6 hours to detect unexpected duplicate creation.
-  5.  If prompt count growth is abnormal, immediately flip `GENIE_PERSISTENCE_ENABLED=0` and investigate logs / DB state.
-
-How to run the prompt-count monitor locally
-
-1. Ensure `DATABASE_URL` points to the target DB (staging or dev) and that `@prisma/client` is present.
-
-```bash
-# print current prompt count (JSON output)
-DATABASE_URL=postgresql://user:pass@host:5432/dbname node server/scripts/print_prompt_count.js
-```
-
-Example CI check (manual/one-off)
-
-Add a CI job that runs the script and fails (or alerts) if the prompt count increased unexpectedly compared to a stored baseline. Example (conceptual):
-
-```yaml
-# steps (concept)
-- name: Check prompt count
-   run: |
-      npx --prefix server prisma generate
-      DATABASE_URL=${{ secrets.DATABASE_URL }} node server/scripts/print_prompt_count.js > current.json
-      # Compare current.json to baseline stored in repo or artifacts and alert if growth > threshold
-```
-
-This repo includes a simple monitor helper; integrating it into long-term monitoring or an external alerting system (Prometheus, Datadog) is recommended for production usage.
-
-Decision: enable persistence (scheduled shortly)
-
-After reviewing tradeoffs and readiness, the decision is to enable `GENIE_PERSISTENCE_ENABLED` now — "now" meaning shortly after a short break (target: within a few hours on 2025-10-26). This balances prototype momentum with safety: the CI concurrency test, the prompt-count monitor, and migration artifacts are in place so we can safely exercise persistence in staging first.
-
-Tradeoffs (brief)
-
-- Speed vs Safety: enabling now slows immediate feature velocity slightly (migrations + monitoring) but surfaces DB/production issues earlier. Keeping it off keeps iteration fast but defers real-world validation.
-- Rollforward vs Rollback: If issues appear after enabling, rollback is quick by disabling `GENIE_PERSISTENCE_ENABLED`, but schema rollbacks are slower. We mitigate by running dedupe dry-runs and by applying migrations to a staging DB first.
-- Observability: enabling now requires active monitoring (prompt-count baseline, CI run verification). This requires a short-term human attention window (3–6 hours) after flip.
-
-Planned short timeline (what will happen in the next few hours)
-
-1. Wait ~a few hours (developer break window).
-2. In staging: run `npx --prefix server prisma migrate deploy` to apply migrations.
-3. Enable persistence in staging: set `GENIE_PERSISTENCE_ENABLED=1` (env or config).
-4. Record baseline prompt count:
-
-```bash
-DATABASE_URL=postgresql://... node server/scripts/print_prompt_count.js
-```
-
-5. Observe prompt-count and logs for 3–6 hours. If duplicate growth or errors appear, immediately set `GENIE_PERSISTENCE_ENABLED=0` and investigate.
-
-6. If staging is stable, plan production rollout using the same steps and a dedupe dry-run if the production DB is non-empty.
-
-With these safeguards in place we will proceed with enabling persistence on the schedule above.
-
-Decision record & PR status
-
-- PR created from `feature/genie-phase4-dedupe` → `aetherV0/anew-default-basic` with migration, upsert implementation, and new tests. Link: https://github.com/ill-di/dinoWorld/pull/1
-
-Notes
-
-- The codebase already contains fallbacks so tests can run without a Postgres instance; that made local development fast but does not replace full Postgres verification. The checklist above prioritizes the minimal, high-confidence verification steps required to sign off Phase 4.
-
-If you want, I will implement the full concurrency test and add a dedicated PR-CI job that starts Postgres as a service and runs migrations + concurrency test automatically (requires no secrets). Say "Implement CI Postgres job and concurrency test" and I will proceed.
-
-## ADDENDUM — Temporary deviation rationale, recommendation, and actionables
-
-Why the momentary deviation is necessary
-
-- During iterative work on Phase 4 we introduced a slightly different in-memory
-  "AI result" shape (an object that contains both `content` and `copies`) which
-  surfaced a compatibility mismatch with existing tests and an API consumer
-  expectation that the stored `result` equals the canonical `content` object.
-- To make the runtime return a more "AI-like" multi-page generation envelope
-  while preserving backwards-compatibility for current callers and tests, we
-  temporarily deviate from the single-change, strictly-minimal migration plan
-  and add an explicit multi-page envelope in the response. This deviation is
-  momentary: it keeps the public contract stable while enabling a clearer,
-  future-friendly shape for UI and persistence.
-
----
-
-Status: ADDENDUM implementation
-
-- The ADDENDUM recommendations have been implemented in this branch:
-  - `server/utils/aiMockResponse.js` was added and provides `buildMockAiResponse`.
-  - `server/genieService.js` was updated to use `buildMockAiResponse`, include
-    `data.aiResponse` in the generator response, and preserve `data.content` as
-    the canonical single-page payload.
-  - `server/index.js` read endpoints (`/api/ai_results` and `/api/ai_results/:id`)
-    include a compatibility unwrapping layer that returns the canonical `content`
-    to clients when the stored DB row contains a multi-page envelope.
-
-All tests were run locally after the changes and the server test suite passed
-(`38 files, 60 tests`). Background DB-not-initialized unhandled rejections were
-fixed by defensive coding in `genieService` (defensive recovery on `getPrompts`
-and catching errors in the fire-and-forget persistence path).
-
-Remaining small follow-ups (low-risk, recommended):
-
-- Add unit tests for `buildMockAiResponse` (happy path + page-count clamping).
-- Add integration tests ensuring `POST /prompt` returns canonical `data.content`
-  and that `aiResponse` is persisted and readable via `GET /api/ai_results`.
-- Consider making `crud.getPrompts` accept an explicit `limit` parameter (or
-  provide a dedicated `getRecentPrompts(limit)` helper) to avoid ambiguity when
-  callers try to pass a numeric limit. Currently `crud.getPrompts()` takes an
-  optional callback and passing a number is ambiguous.
-- Add a small, targeted test that simulates `db` not initialized and verifies
-  persistence does not cause unhandled rejections (prevents regression).
-
-These follow-ups are small and non-blocking; I can add them next if you want.
-Recommended shape and behaviour (backwards-compatible)
-
-- Keep `data.content` as the canonical, single-page content object (unchanged).
-- Add an explicit multi-page envelope at `data.aiResponse` containing:
-  - `pages`: an array of page objects (each with `title`, `body`, `layout`)
-  - `metadata`: model/tokens information
-  - `pageCount`: number of pages
-  - `summary` (optional)
-- Make the number of pages configurable (positive integer). Provide sensible
-  defaults (e.g., `GENIE_MOCK_PAGES` environment variable or a default value of
-  1.  and validate/cap client-provided values (e.g., maxPages = 50) to avoid
-      resource abuse.
-
-Explanation
-
-- This keeps existing consumers and tests that expect `data.content` intact,
-  while giving front-ends and downstream systems a clear, explicit place to
-  look for a multi-page/LLM-like result. Persisting the full `aiResponse`
-  preserves richer metadata in the DB without forcing callers to change.
-
-Concrete recommendation
-
-1. Add a small helper `buildMockAiResponse(prompt, { pages })` (suggest
-   location: `server/utils/aiMockResponse.js`) that returns the canonical
-   `content`, the `aiResponse` envelope and `metadata`. The helper should
-   enforce page-count validation (>=1, <= MAX_PAGES).
-2. Update `server/genieService.js` to call the helper and include
-   `out.data.aiResponse` in the returned payload, while keeping `out.data.content`.
-3. Persist the `aiResponse` object when creating AI result records so the DB
-   stores the full multi-page envelope (this preserves `copies`/pages and
-   metadata). Use `dbUtils.createAIResult(promptId, aiResponse)` or similar.
-4. Keep or add a compatibility layer in the public CRUD read endpoints: for
-   `/api/ai_results/:id` return the unwrapped `content` under `data.result` if
-   the stored shape contains `{ content: ... }`. Optionally also return the
-   full `aiResponse` under a separate field so clients can opt-in to richer
-   data without breaking existing expectations.
-5. Add tests:
-   - Unit tests for `buildMockAiResponse` (page-count validation, metadata).
-   - Integration test for `POST /prompt` that asserts `data.content` remains
-     unchanged and `data.aiResponse.pages.length === requestedPages`.
-   - Persistence tests that verify stored `ai_results` include the full
-     `aiResponse` and that the read endpoint returns the expected unwrapped
-     content for compatibility.
-6. Add configuration and safety: `GENIE_MOCK_PAGES` for global default and an
-   optional `GENIE_ALLOW_CLIENT_PAGES` to gate client-provided page counts in
-   production.
-
-Actionables (prioritized, with estimates)
-
-1. Implement `server/utils/aiMockResponse.js` and import it into
-   `server/genieService.js` — 20–40 minutes.
-2. Update `server/genieService.js` to include `aiResponse` in `out.data` and
-   persist `aiResponse` via `dbUtils.createAIResult` — 30–60 minutes.
-3. Update `server/index.js` GET `/api/ai_results/:id` to unwrap stored result
-   for backward compatibility (and optionally expose full `aiResponse`) — 15–30 minutes.
-4. Add unit/integration tests for helper, POST /prompt behaviour, and
-   persistence shaping — 1–3 hours.
-5. Run full test suite and fix any remaining issues (iterate) — 0.5–1h.
-
-Why this is acceptable as a temporary deviation
-
-- It avoids breaking consumers and tests by preserving `data.content`.
-- It provides a clean path to richer multi-page responses which are useful
-  for UI and future features (pagination, per-page image generation, etc.).
-- The change surface is small and well-contained (helper + two small wiring
-  points + tests) and can be rolled back or adjusted as we finalize the
-  Phase 4 migration.
-
-Monitoring / follow-ups
-
-- Add a short log line when `aiResponse` is generated so we can monitor how
-  often multi-page responses are created during rollout.
-- If the persisted `aiResponse` objects grow large in production, add a
-  monitoring alert on DB row sizes and consider storing pages in a separate
-  table or object storage.
-
-Decision record
-
-- Temporary deviation approved in order to: preserve compatibility, deliver a
-  clearer AI-style contract to front-ends, and enable persistence of richer
-  generation artifacts without a broad, breaking API change.
-
----
-
-If you'd like, I can prepare the exact, small patch that adds
-`server/utils/aiMockResponse.js`, updates `server/genieService.js` to include
-`aiResponse` and provides the recommended read-endpoint compatibility logic
-in `server/index.js`. I can also run the test suite after making those edits
-and iterate until green. Say "Apply the patch and run tests" to proceed.
-
-#### Technical Requirements:
-
-1. Database Migration
-
-   - Add unique index on normalized prompt text
-   - Schema update:
-     ```prisma
-     model Prompt {
-       normalizedText String @unique
-       // existing fields remain unchanged
-     }
-     ```
-   - Migration must handle existing data
-
-2. Upsert Implementation
-
-   - Modify crud.createPrompt for upsert behavior
-   - Return existing record on conflict
-   - Ensure atomic operations for concurrent requests
-
-3. Integration Requirements
-
-   - Leverage existing normalizePrompt utility
-   - Work with GENIE_PERSISTENCE_ENABLED flag
-   - Integrate through dbUtils layer
-
-4. Testing Requirements
-
-   - Concurrent submission validation
-   - Duplicate detection verification
-   - Normalized text variation testing
-   - Edge case coverage (long prompts, special chars)
-
-5. Success Criteria
-
-   - Identical normalized prompts yield same promptId
-   - No database duplicates
-   - Maintained functionality
-   - Acceptable performance under load
-
-6. Risk Mitigation
-   - Migration rollback plan
-   - Error handling strategy
-   - Performance monitoring approach
-   - Concurrent operation safety
-
-### Current Phase
-
-**Phase 5** — Optional in-process coalescing (0.5–1 day)
-
-- Implement per-prompt Promise map in genieService
-- Coalesce concurrent misses for same prompt
-- Use DB unique constraint as safety net
-
-### Upcoming Phases
+End of concise doc.
 
 **Phase 6** — Docs, monitoring, cleanup (0.5–1 day)
 

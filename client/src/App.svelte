@@ -3,6 +3,7 @@
   import { appState } from './stores/appState.js';
   import { modeStore } from './stores/modeStore.js';
   import ModeIndicator from './components/ModeIndicator.svelte';
+  import ExportButton from './components/ExportButton.svelte';
 
   // Fetch backend health status on mount
   let health = null;
@@ -76,6 +77,11 @@
       <div style="margin-top:1.5rem; padding:1rem; border:1px solid #ccc; border-radius:8px; background:#fafafa;">
         <h3>AI Result</h3>
         <pre style="white-space:pre-wrap;">{aiResult}</pre>
+      </div>
+
+      <!-- Export button: triggers client-side exportToPdf flow -->
+      <div style="margin-top:1rem; max-width:500px;">
+        <ExportButton />
       </div>
     {/if}
     {#if apiError}

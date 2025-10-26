@@ -1,0 +1,226 @@
+# Export UI & End-to-End PDF Flow
+
+Last updated: 2025-10-26T12:00:00Z
+
+## Mission
+
+Enable a clear, testable, and user-facing PDF export path so that a user can generate and download an A4 PDF (the primary product of this prototype). The feature must be easy to enable in the UI, robust in typical local/CI environments, and verifiable via smoke tests.
+
+Goals:
+
+- Provide step-by-step flow and responsibilities (frontend + backend).
+- Include minimal sample code to mount the Export button and wire the client flow.
+- Provide an executable checklist and commands to verify the feature locally and in CI.
+
+Success criteria (checkable):
+
+- A visible "Export to PDF" button in the main UI when content exists.
+- Clicking the button triggers a server request and the browser downloads a PDF blob named `AetherPress-Export-<timestamp>.pdf`.
+- Smoke tests that exercise `/export` pass in the dev environment and CI.
+
+## High-level flow (end-to-end)
+
+1. User requests generation via `POST /prompt` (existing flow). The app sets the returned content in the frontend `contentStore` (or equivalent shared store).
+2. User clicks "Export to PDF" in the UI.
+3. Frontend `ExportButton` calls `exportToPdf(content)` which does a `fetch('/export', { method: 'POST', body: JSON.stringify(content) })`.
+4. Backend receives `/export` and:
+   - Renders HTML preview (re-uses the preview templates used by `/preview`).
+   - Uses Puppeteer (or headless Chromium wrapper) to render the HTML to A4 PDF (or uses an existing export job pipeline) and returns the PDF bytes as `application/pdf` in response.
+5. Browser receives the response and the client code converts it to a Blob, creates an object URL and programmatically triggers a download.
+6. Frontend shows success/failure UI and logs metrics.
+
+Diagram (linear):
+
+User UI (click)
+→ client/exportToPdf() (POST /export)
+→ server/index.js (POST /export) → render HTML → Puppeteer → PDF bytes
+← response (application/pdf)
+← client triggers download
+
+## Responsibilities (who/what)
+
+- Frontend
+
+  - House `ExportButton.svelte` component (exists at `client/src/components/ExportButton.svelte`).
+  - Ensure `contentStore` contains a content object with at least `{ title, body }` when button is visible.
+  - Implement `exportToPdf(content)` in `client/src/lib/api.js` (already present) to POST and initiate download from blob.
+  - Provide lightweight UI progress and error messages.
+
+- Backend
+
+  - `/export` POST/GET routes live in `server/index.js` and already include fallback logic for tests. Must render same HTML used by `/preview` for faithful PDF generation.
+  - Use Puppeteer/Chromium in dev/CI to convert HTML to A4 PDF. The existing repo includes export scripts and a pipeline; reuse them.
+  - Return `Content-Type: application/pdf` and PDF bytes as response (or set proper disposition if desired for direct download).
+
+- Test/CI
+  - Smoke tests call `/export` (see `server/scripts/run_export_test_inproc.js` and `client/scripts/smoke-e2e.*`) to validate a PDF is returned and saved by the test harness.
+
+## Sample code — mounting the Export button
+
+The UI already contains `ExportButton.svelte` and `exportToPdf()` client API. Mount the component in the main App view.
+
+Add the import and component to `client/src/App.svelte` (example insertion shown):
+
+```svelte
+<script>
+  import ExportButton from './components/ExportButton.svelte';
+  // existing imports...
+</script>
+
+<!-- place the ExportButton below the AI result area -->
+{#if aiResult}
+  <div style="margin-top:1.5rem;">
+    <div style="margin-top:1rem;"> <!-- existing AI result container -->
+      <h3>AI Result</h3>
+      <pre style="white-space:pre-wrap;">{aiResult}</pre>
+    </div>
+
+    <!-- add export button here -->
+    <ExportButton />
+  </div>
+{/if}
+```
+
+Notes:
+
+- `ExportButton.svelte` reads `contentStore` internally; ensure your generation handler populates `contentStore.set({ title, body, promptId, ... })` after `POST /prompt` returns.
+
+## Sample client export logic (already in repo)
+
+`client/src/lib/api.js` contains `exportToPdf(content)` which:
+
+- Validates content has `{ title, body }`.
+- Posts JSON to `/export`.
+- Receives response as a Blob and triggers a download with a filename `AetherPress-Export-<timestamp>.pdf`.
+
+If you need the minimal client snippet (already implemented):
+
+```js
+// POST the content and trigger browser download
+const resp = await fetch("/export", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(content),
+});
+if (!resp.ok) throw new Error("Export failed");
+const blob = await resp.blob();
+const url = window.URL.createObjectURL(blob);
+const a = document.createElement("a");
+a.href = url;
+a.download = `AetherPress-Export-${Date.now()}.pdf`;
+document.body.appendChild(a);
+a.click();
+window.URL.revokeObjectURL(url);
+a.remove();
+```
+
+## Server expectations
+
+- The server should accept JSON POST to `/export` and return `application/pdf`.
+- The server export path should be tolerant of large payloads (the preview HTML may be large). Consider using `POST /api/export` for larger jobs that return JSON job ids and an async job pipeline — however for basic immediate export the synchronous `POST /export` returning the PDF blob is acceptable.
+
+Existing server files to review (already present):
+
+- `server/index.js` — contains `/export`, `/api/export`, and `/debug/export-html` routes.
+- `server/scripts/run_export_test_inproc.js` — in-process export test used by tests/coverage.
+- `client/scripts/smoke-e2e.js` and `client/scripts/smoke-e2e.cjs` — smoke scripts look for `/export` network events.
+
+## Executable checklist (do these to enable & verify feature locally)
+
+1. Add ExportButton to the app (if not already mounted)
+
+   - Edit `client/src/App.svelte` and insert the import + `<ExportButton />` as shown above.
+
+2. Ensure `contentStore` is populated after generation
+   - After `POST /prompt` returns in your frontend generation handler, call the `contentStore`'s setter with the canonical content object. Example (pseudo):
+
+```js
+// after receiving generation response
+import { contentStore } from "./stores";
+contentStore.set({
+  title: result.title,
+  body: result.body,
+  promptId: result.promptId,
+});
+```
+
+3. Start the backend and frontend dev servers
+
+```bash
+# from repo root (devcontainer)
+# Start server (runs on localhost:3000)
+npm --prefix server run dev
+
+# Start frontend (Vite) (runs on localhost:5173)
+npm --prefix client run dev
+```
+
+4. Open the app in the browser
+
+- Navigate to `http://localhost:5173`, create or generate content (POST /prompt), then click "Export to PDF".
+- Confirm a PDF file downloads and is valid (open it in a PDF viewer).
+
+5. Run the server export in-process smoke test (automated)
+
+```bash
+# runs in the server package and posts a sample export request to /export
+node server/scripts/run_export_test_inproc.js
+# expect the script to either save a temp PDF or assert a 200 response with PDF bytes
+```
+
+6. CI: ensure the job that runs smoke tests includes start of Chrome/Chromium and the server job runs `npm --prefix server run verify-export` (see README for guidance). The repo already includes smoke scripts that probe `/export`.
+
+## Verification commands (copy/paste)
+
+```bash
+# 1) run server tests
+npm --prefix server test
+
+# 2) run in-process export test
+node server/scripts/run_export_test_inproc.js
+
+# 3) run client smoke (headless) that watches /export network event
+node client/scripts/smoke-e2e.cjs
+```
+
+## Errors & troubleshooting
+
+- If clicking Export yields a network error or CORS 404/502:
+  - Check Vite proxy config in `client/vite.config.js` (there is a proxy mapping `/export` to backend in dev).
+  - Confirm server dev is running and port matches proxy.
+- If the server returns 500 during PDF generation:
+  - Check that Puppeteer/Chromium is installed or that environment variable `PUPPETEER_SKIP_CHROMIUM_DOWNLOAD` is set appropriately and `CHROME_PATH` points to a valid binary (see README export instructions).
+- If the PDF is empty or malformed:
+  - Confirm the preview HTML returned by `/preview` renders correctly in a browser (manually open the preview HTML) before converting to PDF.
+
+## Minimal automated smoke test (recommended)
+
+Add a tiny e2e test that:
+
+1. Calls `POST /prompt` with a sample poem (use `server/samples/export_request_body.json`).
+2. Waits for the returned content/promptId and calls `POST /export` with that content.
+3. Asserts response `Content-Type` is `application/pdf` and length > 1KB.
+
+This test can be run under Vitest or plain Node `fetch` in CI using the Postgres-less fallback path.
+
+## Rollout notes
+
+- Keep `GENIE_PERSISTENCE_ENABLED` feature flag OFF in production until the db migrations and concurrency tests are validated (this doc does not change that policy).
+- For the demo branch and beyond, consider implementing a background export job pipeline (POST returns jobId) and a monitor that returns a download URL when the job completes.
+
+## Appendix — quick patch example (one-liner)
+
+If you want a single line patch you can apply to the `App.svelte` file to mount the `ExportButton` near the AI result, add this import and component where `aiResult` is displayed:
+
+```diff
++import ExportButton from './components/ExportButton.svelte';
+@@
+ {#if aiResult}
+   <div style="margin-top:1.5rem;"> ... </div>
++  <ExportButton />
+ {/if}
+```
+
+---
+
+End of document.
