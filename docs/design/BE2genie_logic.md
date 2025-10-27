@@ -13,28 +13,28 @@ The Genie service implements a prompt-to-generation flow with robust persistence
                                               │
                                               ▼
 ┌──────────────────────────────────────────────────────────────────────┐
-│                           POST /prompt                                │
-│                     Controller (server/index.js)                      │
+│                           POST /prompt                               │
+│                     Controller (server/index.js)                     │
 └──────────────────────────────┬───────────────────────────────────────┘
                                │
                                ▼
 ┌──────────────────────────────────────────────────────────────────────┐
-│                         GenieService                                  │
+│                         GenieService                                 │
 │                   (server/genieService.js)                           │
 │                                                                      │
-│    ┌─────────────────────┐        ┌───────────────────────┐         │
-│    │  Generate Response  │───────▶│ Optional Persistence   │         │
-│    └─────────────────────┘        └───────────────────────┘         │
+│    ┌─────────────────────┐         ┌───────────────────────┐         │
+│    │  Generate Response  │───────▶│ Optional Persistence   │        │
+│    └─────────────────────┘         └───────────────────────┘         │
 └──────────────────────────────┬───────────────────────────────────────┘
                                │
                                ▼
 ┌──────────────────────────────────────────────────────────────────────┐
-│                         SampleService                                 │
+│                         SampleService                                │
 │                   (server/sampleService.js)                          │
 │                                                                      │
-│    ┌─────────────────────┐        ┌───────────────────────┐         │
+│    ┌─────────────────────┐         ┌───────────────────────┐         │
 │    │  Content Building   │───────▶│    File Persistence   │         │
-│    └─────────────────────┘        └───────────────────────┘         │
+│    └─────────────────────┘         └───────────────────────┘         │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -118,19 +118,16 @@ Total estimated effort: 4-12 hours active work + 3-6 hours monitoring
 ### Key Components
 
 1. **Controller Layer** (`server/index.js`)
-
    - Input validation
    - Service delegation
    - Response formatting
 
 2. **Service Layer** (`server/genieService.js`)
-
    - Core generation logic
    - Persistence coordination
    - Response wrapping
 
 3. **Business Layer** (`server/sampleService.js`)
-
    - Content generation
    - Mock implementations
    - File system interactions
@@ -143,7 +140,6 @@ Total estimated effort: 4-12 hours active work + 3-6 hours monitoring
 ### Safety Considerations
 
 1. **Development Environment**
-
    - Local SQLite fallbacks
    - Test-mode compatibility
    - Feature flag protection
@@ -157,13 +153,11 @@ Total estimated effort: 4-12 hours active work + 3-6 hours monitoring
 ## Next Steps
 
 1. **Immediate Actions**
-
    - Initialize CI Postgres job
    - Add concurrency test suite
    - Complete unit test coverage
 
 2. **Near-term Tasks**
-
    - Update documentation
    - Add structured logging
    - Implement metrics collection
