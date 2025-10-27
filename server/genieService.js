@@ -416,6 +416,100 @@ const genieService = {
   saveContentToFile(content) {
     return saveContentToFile(content);
   },
+
+  /**
+   * Read persisted canonical content for a prompt id.
+   * Returns an object like: { content, copies, metadata, promptId, resultId, normalizedHash }
+   */
+  async getPersistedContent(promptId) {
+    if (!promptId) {
+      const e = new Error("promptId required");
+      // @ts-ignore
+      e.status = 400;
+      throw e;
+    }
+
+    try {
+      let dbUtils;
+      try {
+        dbUtils = require("./utils/dbUtils");
+      } catch (e) {
+        // Fallback to legacy crud if dbUtils not available
+        try {
+          dbUtils = require("./crud");
+        } catch (err) {
+          throw e;
+        }
+      }
+
+      // Prefer using Prisma directly if available to find the latest aiResult
+      if (dbUtils && typeof dbUtils._getPrisma === "function") {
+        const prisma = dbUtils._getPrisma();
+        try {
+          const aiRow = await prisma.aIResult.findFirst({
+            where: { promptId: Number(promptId) },
+            orderBy: { createdAt: "desc" },
+          });
+          if (aiRow && aiRow.result) {
+            const resultObj =
+              typeof aiRow.result === "string"
+                ? JSON.parse(aiRow.result)
+                : aiRow.result;
+            const content = resultObj.content || resultObj || {};
+            const metadata = resultObj.metadata || {};
+            return {
+              content,
+              copies: resultObj.copies || [],
+              metadata,
+              promptId: Number(promptId),
+              resultId: aiRow.id,
+              normalizedHash: resultObj.normalizedHash || null,
+            };
+          }
+        } catch (e) {
+          // ignore and fall through to dbUtils helper
+        }
+      }
+
+      // Fallback: if dbUtils exposes a getAIResultById or other helpers
+      if (dbUtils && typeof dbUtils.getAIResultById === "function") {
+        // getAIResultById expects an id; try to find via prompts list
+        const prompts = await dbUtils.getPrompts();
+        const found = (prompts || []).find(
+          (p) => Number(p.id) === Number(promptId)
+        );
+        if (found && found.id) {
+          const aiRows = await dbUtils
+            .getAIResultById(found.id)
+            .catch(() => null);
+          if (aiRows && aiRows.result) {
+            const resultObj =
+              typeof aiRows.result === "string"
+                ? JSON.parse(aiRows.result)
+                : aiRows.result;
+            const content = resultObj.content || resultObj || {};
+            return {
+              content,
+              copies: resultObj.copies || [],
+              metadata: resultObj.metadata || {},
+              promptId: found.id,
+              resultId: aiRows.id,
+              normalizedHash: resultObj.normalizedHash || null,
+            };
+          }
+        }
+      }
+
+      // Not found
+      const e = new Error("persisted content not found");
+      // @ts-ignore
+      e.status = 404;
+      throw e;
+    } catch (err) {
+      // Re-throw
+      throw err;
+    }
+  },
 };
 
 module.exports = genieService;
