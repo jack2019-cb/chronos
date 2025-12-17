@@ -90,8 +90,31 @@
 **Critical Implication**:
 
 - Flash is **7.5x more generous** on RPM than Pro
-- Pro is the bottleneck model (2 RPM = 1 call every 30 seconds)
+- Pro is the bottleneck model (2 RPM = 2 calls per 60-second sliding window, NOT uniform spacing)
 - Daily limit on Pro is extremely strict (50 RPD = ~6 requests/hour)
+
+### Pro Quota Mechanics (Clarification)
+
+**Common Misconception**: "2 RPM means 1 call every 30 seconds"
+
+**Actual Behavior**: 2 RPM is a **sliding window constraint** (max 2 requests within any 60-second window), not uniform spacing. You CAN burst 2 calls back-to-back, then wait ~60 seconds for the oldest call to age out.
+
+**Example Timeline**:
+
+- T=0s: Call 1 (structure) fires → success
+- T=0.5s: Call 2 (opening) fires → success (burst allowed, within 2 RPM window)
+- T=0-60s: You've exhausted your 2 RPM quota
+- T=60.1s: Call 3 (closing) can fire → success (Call 1 aged out, window rotated)
+
+**Practical Production Caveat** (Empirically Verified): While bursting is technically allowed, empirical testing reveals **friction** (transient 429/5xx errors, rate-limit rejections) when firing consecutive Pro calls without spacing. **Best practice**: Add ~250ms delays between consecutive Pro calls to prevent this friction and improve reliability in production.
+
+**Revised Timeline with Spacing**:
+
+- T=0s: Call 1 fires
+- T=0.25s: Call 2 fires (after 250ms buffer)
+- T=60s: Call 3 fires (waiting for window rotation)
+
+Result: More stable, fewer transient errors.
 
 ### Pay-as-You-Go Tier (with billing enabled)
 
@@ -1110,12 +1133,16 @@ const calendar = await calendarService.handle(payload);
 **API Limits** (Free Tier):
 
 - Flash quota: 15 calls/minute = 1 call/4 seconds
-- Pro quota: 2 calls/minute = 1 call/30 seconds
-- Pro is the actual bottleneck (2 RPM)
+- Pro quota: 2 calls/minute = 2 calls per 60-second sliding window (NOT uniform spacing)
+- Pro is the actual bottleneck (2 RPM = max 2 calls per 60-second window)
 
-### How Pro's 2 RPM Naturally Spaces Flash Calls
+### How Pro's Quota Naturally Spaces Flash Calls
 
-The architectural pattern of separating Pro (reasoning, low volume) and Flash (generation, high volume) creates an emergent benefit: **Pro's 30-second inter-call spacing naturally spaces Flash calls far enough that the rate-limiter rarely needs to trigger additional delays**.
+The architectural pattern of separating Pro (reasoning, low volume) and Flash (generation, high volume) creates an emergent benefit: **Pro's quota constraint naturally introduces gaps that space Flash calls far enough that the rate-limiter rarely needs to trigger additional delays**.
+
+**How the Spacing Works**:
+
+Since a typical ebook needs 1 Pro call (structure) followed by multiple Flash calls (chapters), and the Pro call takes 10-15s to complete, the Flash calls naturally start after a 10-15 second gap. This natural spacing (>4 seconds between Flash calls) satisfies Flash's rate-limit requirements without requiring artificial delays.
 
 **Timeline Analysis for a 10-page Ebook** (5 Flash calls + 1 Pro call):
 
