@@ -1,8 +1,8 @@
-# AetherPress Backend Architecture — REFRESHED
+# AetherPress Backend Architecture
 
 ## Implementation-Based Deep Dive
 
-**Date**: December 18, 2025 (Corrected)  
+**Date**: December 17, 2025  @ 3:30PM
 **Scope**: Scope 2 - Backend Architecture (Implementation Verified)  
 **Target Audience**: Backend developers, DevOps, API consumers  
 **Reading Time**: ~20-25 minutes
@@ -13,7 +13,7 @@
 
 - [ARCHITECTURE_DOCUMENTATION_PROPOSAL.md](ARCHITECTURE_DOCUMENTATION_PROPOSAL.md) (4-scope project overview)
 - [PIPELINE_SEPARATION_BLUEPRINT.md](focus/PIPELINE_SEPARATION_BLUEPRINT.md) (Branch strategy)
-- Historical Reference: [BACKEND_ARCHITECTURE_REF4.md](BACKEND_ARCHITECTURE_REF4.md) (Previous version, do not edit)
+- Historical: [BACKEND_ARCHITECTURE_REF0.md](BACKEND_ARCHITECTURE_REF0.md)
 
 ---
 
@@ -520,9 +520,7 @@ The ebook service (`ebookService.handle()`) supports two distinct generation str
 - Batch chapter generation
 - Advanced orchestration
 
-### Strategy 1: Legacy Sequential ⚠️ DEPRECATED
-
-**Status**: This strategy is **DEPRECATED**. The `ebookService` is the final authority on how ebooks are formed and now recommends NAT-CONT_0.
+### Strategy 1: Legacy Sequential
 
 **Entry Point**: [server/ebookService.js#L40](../../../../server/ebookService.js)
 
@@ -533,11 +531,9 @@ async function handle(payload, classification) {
 
   // Legacy path (when strategy !== "nat-cont_0")
   if (strategy !== "nat-cont_0") {
-    console.log(
-      "[EBOOK] Using strategy: legacy (default sequential) - DEPRECATED"
-    );
+    console.log("[EBOOK] Using strategy: legacy (default sequential)");
 
-    // Sequential flow (deprecated):
+    // Sequential flow:
     // Step 1: Structure generation (callIndex=0, Pro)
     // Step 2-N: Chapter generation loop (callIndex=1..N, Flash)
     // Step N+1: Compose HTML
@@ -548,8 +544,6 @@ async function handle(payload, classification) {
   // Otherwise, use NAT-CONT_0...
 }
 ```
-
-**Deprecation Note**: Use NAT-CONT_0 instead for better narrative continuity and semantic tier routing.
 
 **Process** (Legacy Path):
 
