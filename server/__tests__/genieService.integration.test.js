@@ -69,8 +69,8 @@ describe("genieService.process() integration", () => {
     expect(envelope.out_envelope).toBeDefined();
     const out = envelope.out_envelope;
     expect(Array.isArray(out.pages)).toBe(true);
-    // pages come from ebookService.pages (2 chapters mocked)
-    expect(out.pages.length).toBe(2);
+    // NAT-CONT_0: Structure + Opening + Middle (2 chapters batched) + Closing = 4 pages
+    expect(out.pages.length).toBe(4);
     expect(out.metadata).toBeDefined();
     expect(out.metadata.mode).toBe("ebook");
     expect(out.metadata.generated_at).toBeDefined();

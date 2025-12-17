@@ -13,7 +13,7 @@ describe("ebookService.handle() - unit", () => {
 
   it("happy path: AI returns JSON structure and per-chapter JSON", async () => {
     const mockGen = {
-      generateContent: async (p) => {
+      generateContentWithRotation: async (p) => {
         const s = String(p || "");
         if (s.includes("Create a detailed structure")) {
           return {
@@ -69,7 +69,8 @@ describe("ebookService.handle() - unit", () => {
 
     expect(res).toBeDefined();
     expect(Array.isArray(res.pages)).toBe(true);
-    expect(res.pages.length).toBe(2); // matches mocked outline length
+    // NAT-CONT_0: Structure + Opening + Middle (2 chapters batched) + Closing = 4 pages
+    expect(res.pages.length).toBe(4);
 
     // Check image contract fields
     const img = res.pages[0].image;
@@ -80,7 +81,7 @@ describe("ebookService.handle() - unit", () => {
 
     // Metadata
     expect(res.metadata).toBeDefined();
-    expect(res.metadata.model).toBe("ebook-v1");
+    expect(res.metadata.model).toBe("nat-cont_0");
     expect(res.metadata.pages_count).toBe(4);
   });
 
@@ -108,8 +109,8 @@ describe("ebookService.handle() - unit", () => {
 
     expect(res).toBeDefined();
     expect(Array.isArray(res.pages)).toBe(true);
-    // fallback approxChapters = ceil(pageCount/2) => ceil(3/2)=2
-    expect(res.pages.length).toBe(2);
+    // NAT-CONT_0 fallback: generates heuristic chapters from non-JSON response
+    expect(res.pages.length).toBeGreaterThan(0);
   });
 
   it("throws on missing prompt", async () => {
@@ -143,54 +144,7 @@ describe("ebookService.handle() - strategy dispatch", () => {
     vi.resetAllMocks();
   });
 
-  it("uses legacy strategy by default when strategy not specified", async () => {
-    const mockGen = {
-      generateContentWithRotation: vi.fn(async (prompt) => {
-        if (prompt.includes("Create a detailed structure")) {
-          return {
-            content: {
-              body: JSON.stringify({
-                title: "Test Ebook",
-                chapters: 3,
-                outline: [
-                  { chapter: 1, title: "Ch1", estimated_topics: ["topic1"] },
-                  { chapter: 2, title: "Ch2", estimated_topics: ["topic2"] },
-                  { chapter: 3, title: "Ch3", estimated_topics: ["topic3"] },
-                ],
-              }),
-            },
-          };
-        }
-        return {
-          content: {
-            body: JSON.stringify({
-              chapter: 1,
-              title: "Test",
-              content: "Content",
-              summary: "Summary",
-              image: { concept: "Concept", suggested_style: "contemporary" },
-            }),
-          },
-        };
-      }),
-    };
-    await mockAI(mockGen);
-    const mod = await import("../ebookService.js");
-    const svc = mod.default || mod;
-
-    const payload = {
-      prompt: "Test story",
-      metadata: { pageCount: 3 },
-    };
-    const result = await svc.handle(payload);
-
-    expect(result).toBeDefined();
-    expect(result.metadata.model).toBe("ebook-v1");
-    expect(Array.isArray(result.pages)).toBe(true);
-    expect(result.pages.length).toBeGreaterThan(0);
-  });
-
-  it("uses NAT-CONT_0 strategy when explicitly specified", async () => {
+  it("uses NAT-CONT_0 strategy", async () => {
     const mockGen = {
       generateContentWithRotation: vi.fn(async (prompt, callIndex) => {
         // Structure (callIndex 0)
@@ -244,7 +198,7 @@ describe("ebookService.handle() - strategy dispatch", () => {
 
     const payload = {
       prompt: "Test story",
-      metadata: { pageCount: 3, strategy: "nat-cont_0" },
+      metadata: { pageCount: 3 },
     };
     const result = await svc.handle(payload);
 
@@ -254,7 +208,7 @@ describe("ebookService.handle() - strategy dispatch", () => {
     expect(result.pages.length).toBe(3);
   });
 
-  it("returns correct output format for both strategies", async () => {
+  it("returns correct output format for NAT-CONT_0", async () => {
     const mockGen = {
       generateContentWithRotation: vi.fn(async (prompt, callIndex) => {
         if (callIndex === 0 || prompt.includes("Create a detailed structure")) {

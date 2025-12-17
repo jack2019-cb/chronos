@@ -36,7 +36,7 @@ async function generateFromPrompt(prompt) {
 /**
  * Handle enhanced payload for ebook mode
  * Generates ebook content using NAT-CONT_0 (Narrative Continuity) strategy
- * 
+ *
  * @param {Object} payload - { prompt, metadata: { theme, pageCount, colorPalette, fontSizeScale } }
  * @param {Object} classification - Optional classification data from genieService
  * @returns {Promise<Object>} Handler result { pages, metadata, html, actions }
@@ -129,7 +129,6 @@ async function handle(payload, classification) {
       can_override: true,
     },
   };
-}
 }
 
 /**
