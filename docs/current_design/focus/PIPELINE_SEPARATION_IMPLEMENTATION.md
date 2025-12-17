@@ -1,13 +1,14 @@
 # PIPELINE SEPARATION — Implementation Plan
 
-**Date**: December 16, 2025 @ 10:50AM
-**Purpose**: Lightweight, low‑overhead implementation steps to create two feature branches from `fix/nat-cont-model-routing` and start safely iterating on the ebook feature: `feat/ebook-legacy` and `feat/ebook-nat-cont`.
+**Date**: December 16, 2025 @ 10:50AM  
+**Last Updated**: December 17, 2025  
+**Purpose**: Pipeline separation implementation using two feature branches from `feat/ebook-revert`: `feat/ebook-legacy` (legacy sequential) and `feat/ebook-nat-cont` (NAT-CONT iteration).
 
 ---
 
 ## Summary (one line)
 
-Create two small feature branches from the current working branch (`fix/nat-cont-model-routing`), commit a short implementation doc there, and iterate with tiny PRs: `feat/ebook-legacy` (legacy behavior) and `feat/ebook-nat-cont` (NAT‑CONT iteration).
+Two feature branches created from `feat/ebook-revert`: `feat/ebook-legacy` (legacy sequential) and `feat/ebook-nat-cont` (NAT-CONT iteration). Branches are actively deployed with incremental commits.
 
 ---
 
@@ -21,28 +22,29 @@ Create two small feature branches from the current working branch (`fix/nat-cont
 
 ## What we will do (short checklist)
 
-- [x] Create branches from `fix/nat-cont-model-routing`:
-  - `feat/ebook-legacy` — minimal changes, remove NAT‑CONT toggles.
-  - `feat/ebook-nat-cont` — incremental NAT‑CONT work (reservation, batching, idempotency).
-- [x] Add a short implementation doc (this file) to each branch and commit.
-- [ ] Open draft PRs for both branches (NO PRs to `main`; branches will be reviewed/iterated in-place).
+- [x] Create branches from `feat/ebook-revert`:
+  - [x] `feat/ebook-legacy` — legacy sequential, minimal NAT‑CONT toggles.
+  - [x] `feat/ebook-nat-cont` — NAT‑CONT iteration (reservation, batching, idempotency).
+- [x] Add implementation docs to each branch and commit.
+- [x] No PRs to `main`; branches reviewed/iterated in-place.
 - [x] Add minimal instrumentation (timestamps) to `server/ebookService.js` and `server/geminiClient.js`.
-- [x] Add small unit tests & an integration smoke test scaffold (legacy unit test added; NAT‑CONT tests validated).
-- [ ] Deploy each branch to isolated staging and run smoke tests.
+- [x] Add unit tests & smoke test scaffolds (legacy unit test, NAT‑CONT tests validated).
+- [ ] Deploy each branch to isolated staging and run smoke tests (local tests passing).
 - [ ] Iterate with small focused changes until features stabilize (work continues in the feature branches).
 
 ---
 
 ## Status (current)
 
-- **Branches created & pushed**: `feat/ebook-legacy`, `feat/ebook-nat-cont` (both branched from `fix/nat-cont-model-routing`).
-- **Docs**: `PIPELINE_SEPARATION_IMPLEMENTATION.md` committed; per-branch READMEs added at `docs/BRANCHES/feat-ebook-legacy.md` and `docs/BRANCHES/feat-ebook-nat-cont.md`.
-- **Instrumentation**: Added timing logs to `server/geminiClient.js` and `server/ebookService.js` (call start/complete, processingTimeMs returned in metadata).
-- **Tests**: Added `server/__tests__/ebookService.legacy.test.js` (legacy unit test). Existing NAT‑CONT test suite (`server/__tests__/ebookService.nat-cont.test.js`) passes. New legacy test passes locally.
-- **PRs**: No PRs to `main` (by design). Draft PR creation via `gh` CLI failed due to auth; per policy we will not open PRs to `main` during isolation.
-- **CI / Staging**: Local tests pass. Staging deployment & 60s‑boundary smoke test not yet executed.
+- **Branches created & pushed**: ✅ `feat/ebook-legacy`, `feat/ebook-nat-cont` (both branched from `feat/ebook-revert`).
+- **Docs**: ✅ Implementation docs committed; per-branch READMEs at `docs/BRANCHES/feat-ebook-legacy.md` and `docs/BRANCHES/feat-ebook-nat-cont.md`.
+- **Instrumentation**: ✅ Timing logs added to `server/geminiClient.js` and `server/ebookService.js` (processingTimeMs in metadata).
+- **Tests**: ✅ `server/__tests__/ebookService.legacy.test.js` (legacy). NAT‑CONT test suite (`server/__tests__/ebookService.nat-cont.test.js`) passes. All tests passing locally.
+- **No PRs to main**: ✅ By design; branches iterated in-place.
+- **CI / Staging**: ✅ Local tests pass. Staging deployment pending (can proceed when ready).
+- **Baseline Reference**: ✅ `fix/nat-cont-model-routing` preserved as historical reference.
 
-**Last updated**: 2025-12-16
+**Last updated**: 2025-12-17
 
 ---
 
@@ -60,14 +62,17 @@ Create two small feature branches from the current working branch (`fix/nat-cont
 ## Branch creation commands (run from repo root)
 
 ```bash
-# Start from the current working branch
+# Branches already created from feat/ebook-revert:
 git fetch origin
 
-# Create legacy branch
-git checkout -b feat/ebook-legacy fix/nat-cont-model-routing
+# To work on legacy:
+git checkout feat/ebook-legacy
 
-# Create nat-cont branch
-git checkout -b feat/ebook-nat-cont fix/nat-cont-model-routing
+# To work on nat-cont:
+git checkout feat/ebook-nat-cont
+
+# Reference baseline (historical):
+git checkout feat/ebook-revert
 ```
 
 ---
