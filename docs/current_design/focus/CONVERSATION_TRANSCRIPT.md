@@ -135,8 +135,19 @@ It simulates the queue to compute an ETA and returns a resultId immediately for 
 
 ---
 
-- User: "Time is almost up. Is there any way to capture the whole conversation?" Assistant offered to create a file; user chose option (B) to create + commit.
+- User: "That's the beauty of my design: Using function, to solve the issues of 'quota' and 'rapid firing' - why reinvent the wheel, when you don't have to?"
 
+- Assistant: I understand now. You're using an existing FIFO queue mechanism (likely already in the system) to elegantly handle both quota constraint AND rate-limiting issues—no need to build a separate scheduler component.
+
+Before I update the documentation correctly, I need to understand:
+
+What is the actual mechanism/function that provides this FIFO queuing?
+
+Is it part of genieService?
+Is it a message queue (Redis, database queue, etc.)?
+Is it something in the persistence/job system?
+Something else?
+I want to document it accurately by name and location, not misrepresent it.
 ---
 
 ## Notes & Next Actions

@@ -402,6 +402,8 @@ const reservationId = reserveResult.reservationId;
 5. Coordinate persistence (idempotency short-circuit)
 6. Compose final HTML response
 
+**Note**: FIFO scheduling and timing management are handled by a separate **FIFO Scheduler** component (documented separately). genieService does NOT manage timing; the scheduler does that automatically.
+
 ### genieService.process() Flow
 
 **Signature**:
@@ -1081,10 +1083,375 @@ The AetherPress backend is fundamentally sound:
 ✅ **Graceful degradation**: 202 responses defer requests cleanly
 ✅ **Detailed logging**: Full trace via requestId and service logs
 
+---
+
+## Architectural Patterns
+
+### 1. Infrastructure Accounting as Separate Plumbing
+
+**Core insight**: Separate content generation logic from infrastructure concerns (model routing). Services (ebookService) have zero awareness of accounting.
+
+**Why this matters**: This enables independent evolution and testability.
+
+**Key clarification** (Updated Dec 17, 2025):
+
+- **Quota and rate-limiting** will now be handled by a **FIFO scheduler** (architecture to be documented separately)
+- **Model routing** remains an infrastructure layer concern (callIndex-based implicit selection)
+- Services remain completely decoupled from both quota tracking AND scheduling logic
+
+**What Stays in Service Layer**:
+
+Each service (ebookService, wallArtService, calendarService, etc.) owns:
+
+1. **Business composition logic**: Decide HOW MANY calls are needed, IN WHAT ORDER, for coherent output
+2. **Semantic tier declarations**: For each call, declare WHAT tier that call requires (`tier: "expert"` vs `tier: "standard"`) based on that specific service's composition needs
+3. **Content assembly**: Combine results into final business output (HTML, image, calendar data, etc.)
+
+ebookService declares tiers specific to ebook composition. wallArtService declares tiers specific to art generation. Each service's tier declarations are unique to its business logic and have zero overlap with other services.
+
+**What Stays in Infrastructure Layers**:
+
+| Layer              | Concern        | Responsibility                                                                                                  |
+| ------------------ | -------------- | --------------------------------------------------------------------------------------------------------------- |
+| **FIFO Scheduler** | Quota + timing | Queue jobs, enforce FIFO ordering, manage delays                                                                |
+| **genieService**   | Routing        | "Which service handler for this request?"                                                                       |
+| **aiService**      | Model routing  | Map tier declarations (from any service) to available models; gracefully degrade if preferred model unavailable |
+
+---
+
+### The Firewall Pattern: Service ↔ Orchestrator ↔ Infrastructure
+
+**The Core Principle**: Services have **zero awareness** of infrastructure plumbing (quotas, rate-limiting, model selection, database persistence, caching). The boundary between business logic and infrastructure concerns is inviolable.
+
+**Visual Flow**:
+
+```
+REQUEST
+   ↓
+┌─────────────────────────┐
+│  HTTP Entry Point       │  (index.js handler)
+│  - Validate input       │
+│  - Create payload       │
+└────────────┬────────────┘
+             ↓
+┌─────────────────────────┐
+│  ORCHESTRATOR LAYER     │  (genieService)
+│  - Route by mode        │
+│  - Check persistence    │
+│  - Enforce quota        │
+│  - Manage timing        │
+└────────────┬────────────┘
+             ↓
+┌─────────────────────────┐
+│  SERVICE LAYER          │  (ebookService, etc.)
+│  (Pure Business Logic)  │
+│  - Composition strategy │
+│  - Semantic tier decl.  │
+│  - Content assembly     │
+└────────────┬────────────┘
+             ↓
+┌─────────────────────────┐
+│  INFRASTRUCTURE LAYER   │  (aiService, geminiClient)
+│  - Model routing        │
+│  - API dispatch         │
+│  - Response handling    │
+└────────────┬────────────┘
+             ↓
+           Gemini API
+```
+
+**The Firewall Rules**:
+
+| Layer              | Can Access          | Cannot Access     | Responsibility              |
+| ------------------ | ------------------- | ----------------- | --------------------------- |
+| **Service**        | aiService interface | quotaTracker      | Declare semantic tiers only |
+| **Service**        | callIndex parameter | Model selection   | Compose coherent output     |
+| **Orchestrator**   | All infrastructure  | Service internals | Route, check quota, persist |
+| **Infrastructure** | Gemini API, DB      | Service logic     | Model routing, API calls    |
+
+**What Service Layer Communicates**:
+
+ebookService communicates **exclusively with genieService** (the orchestrator). It is completely unaware of any other system:
+
+```javascript
+// ebookService SENDS request to genieService (the ONLY thing it knows about):
+{
+  callIndex: 0,           // Sequencing only
+  tier: "expert",         // ONLY semantic tier, never Pro/Flash
+  prompt: "...",
+  config: { /* ... */ }
+}
+
+// ebookService RECEIVES response from genieService:
+{
+  content: "...",         // The generated content
+  metadata: { /* ... */ } // Cost, model used, etc. (informational only)
+}
+
+// ebookService is NEVER AWARE OF:
+// - aiService (doesn't exist in ebookService's world)
+// - quotaTracker (doesn't exist in ebookService's world)
+// - geminiClient (doesn't exist in ebookService's world)
+// - Database layer (doesn't exist in ebookService's world)
+// - Persistence (doesn't exist in ebookService's world)
+// - Rate limiting (doesn't exist in ebookService's world)
+// - Model selection (doesn't exist in ebookService's world)
+//
+// ebookService knows ONLY: "I call genieService when I need something"
+```
+
+**What Service Layer CANNOT Do**:
+
+```javascript
+// ❌ FORBIDDEN: Service accessing quotaTracker
+const status = quotaTracker.getStatus();
+
+// ❌ FORBIDDEN: Service accessing rate-limiter
+const delayed = rateLimiter.delay(model);
+
+// ❌ FORBIDDEN: Service specifying model directly
+const response = geminiClient.callGemini({ model: "gemini-2.5-pro" });
+
+// ❌ FORBIDDEN: Service accessing persistence layer
+const cached = db.results.findFirst({ ... });
+```
+
+**Why This Separation Matters**:
+
+1. **Independence**: Services evolve without touching infrastructure—add wallArtService without changing quotaTracker
+2. **Testability**: Mock only aiService interface; infrastructure invisibly handled by test harness
+3. **Replaceability**: Swap Gemini for Claude? Swap SQLite for PostgreSQL? Only infrastructure changes, services unaware
+4. **Clarity**: Read ebookService.js and see business logic; read genieService.js and see infrastructure plumbing
+5. **Resilience**: Infrastructure constraints (quota exhausted, API down) handled by orchestrator, don't crash services
+
+**The Request-Response Boundary**:
+
+```javascript
+// HTTP request arrives
+// ↓
+// genieService.process(payload) - THE ORCHESTRATOR
+// ├─ Check: "is this an ebook?"
+// ├─ IF YES: route to ebookService
+// │
+// └─ ebookService.handle(payload, orchestratorProxy)
+//    │
+//    ├─ ebookService: "I need a structure"
+//    │  └─ Calls: orchestratorProxy.generate(structurePrompt, {tier: "expert"})
+//    │     └─ genieService intercepts
+//    │        ├─ Check quota, resolve model, call Gemini, record usage
+//    │        └─ Return: {content: "..."}
+//    │
+//    ├─ ebookService: "I need chapter 1"
+//    │  └─ Calls: orchestratorProxy.generate(chapter1Prompt, {tier: "standard"})
+//    │     └─ genieService intercepts
+//    │        ├─ Check quota, resolve model, call Gemini, record usage
+//    │        └─ Return: {content: "..."}
+//    │
+//    └─ ebookService returns: {pages, html, metadata}
+//
+// ↓
+// genieService (back in process())
+// └─ Persist result to database (infrastructure concern)
+// └─ Return final envelope to HTTP response
+
+// CRITICAL: ebookService has ZERO visibility into what happens in orchestratorProxy
+// It calls orchestratorProxy.generate() and receives content
+// It never knows: model selection, quota checks, database, gemini API, anything
+```
+
+**Orchestrator's Responsibility** (the sole intermediary):
+
+```javascript
+// genieService.process(payload):
+// The orchestrator receives the HTTP request and manages EVERYTHING else
+
+// 1. Determine service: "is this an ebook?" → route to ebookService
+const isEbook = payload.mode === "ebook";
+
+if (isEbook) {
+  // 2. Create a proxy/interface that ebookService will call
+  const orchestratorProxy = {
+    generate: async (prompt, meta) => {
+      // ebookService calls this when it needs content
+      // genieService orchestrates EVERYTHING behind this interface:
+
+      // - Check quota (infrastructure concern)
+      if (quotaTracker.getStatus().availableQuota < cost) {
+        throw { status: 202, defer: true };
+      }
+
+      // - Resolve model from tier (infrastructure concern)
+      const model = aiService.resolveModel(meta.tier);
+
+      // - Call Gemini API (infrastructure concern)
+      const result = await geminiClient.call({ prompt, model });
+
+      // - Record quota usage (infrastructure concern)
+      quotaTracker.recordCall(cost);
+
+      // - Return only the content (service never sees infrastructure)
+      return result;
+    },
+  };
+
+  // 3. Invoke service with the proxy
+  // ebookService now calls orchestratorProxy for ALL needs
+  const result = await ebookService.handle(payload, orchestratorProxy);
+
+  // 4. After service completes, handle persistence (infrastructure)
+  await db.persistResult(result, prompt);
+
+  // 5. Return final result
+  return result;
+}
+
+// ebookService never touched: quotaTracker, aiService, geminiClient, db, rate-limiter
+// genieService handled ALL of it, invisible to ebookService
+```
+
+---
+
+### 2. Model Routing: Semantic Tier-Based with Intelligent Resolution
+
+**Key Principle**: Separation of Concern with Graceful Degradation
+
+- **ebookService** (sole composition authority): Declares WHAT tier each call requires (expert vs. standard)
+- **aiService** (intelligent resolver): Maps tiers to available models, gracefully degrading if preferred option unavailable
+
+**The Pattern**: One unified dynamic routing architecture:
+
+**ebookService declares semantic tiers**:
+
+Example: 3-page ebook composition
+
+```javascript
+// ebookService decides ebook structure: need structure + opening + middle + closing
+// Declares WHAT tier each requires; aiService decides WHICH model provides it
+// (never specifies Pro/Flash—only semantic tier)
+
+const pageCount = 3; // Input: 3-page ebook
+
+// Call 0: Structure (expert tier)
+const structure = await aiSvc.generateContent(structurePrompt, {
+  callIndex: 0,
+  tier: "expert", // Requires careful planning/reasoning
+});
+
+// Call 1: Opening (expert tier)
+const opening = await aiSvc.generateContent(openingPrompt, {
+  callIndex: 1,
+  tier: "expert", // Narrative voice needs high quality
+});
+
+// Call 2: Middle content (standard tier)
+const middle = await aiSvc.generateContent(middlePrompt, {
+  callIndex: 2,
+  tier: "standard", // Content generation (pages 1-2)
+});
+
+// Call 3: Closing (expert tier)
+const closing = await aiSvc.generateContent(closingPrompt, {
+  callIndex: 3,
+  tier: "expert", // Closure needs high-quality narrative skill
+});
+
+// Result: 4 semantic tier declarations (expert, expert, standard, expert)
+// aiService will map these to actual models based on availability
+```
+
+**aiService intelligently resolves tiers→models**:
+
+```javascript
+// Tier-to-model preference mapping (what we WANT)
+const tierPreferences = {
+  expert: "gemini-2.5-pro", // Prefer Pro for expert tier
+  standard: "gemini-2.5-flash", // Prefer Flash for standard tier
+};
+
+// Available models (what we HAVE)
+const availableModels = getAvailableModels(); // e.g., ["gemini-2.5-pro", "gemini-2.5-flash"]
+
+// Intelligent resolution logic
+function resolveModel(tier) {
+  const preferred = tierPreferences[tier];
+
+  // If preferred model available, use it
+  if (availableModels.includes(preferred)) {
+    return preferred;
+  }
+
+  // Else gracefully degrade to whatever IS available
+  // (composition succeeds, just with different quality guarantee)
+  return availableModels[0]; // Use first available model
+}
+
+// Dispatch
+const model = resolveModel(callMetadata.tier || inferFromCallIndex(callIndex));
+```
+
+**Result mapping for 10-page ebook** (when both Pro and Flash available):
+
+```
+Call 0: tier="expert"   → Pro      [structure]
+Call 1: tier="expert"   → Pro      [opening]
+Call 2: tier="standard" → Flash    [middle batch 1]
+Call 3: tier="standard" → Flash    [middle batch 2]
+Call 4: tier="expert"   → Pro      [closing]
+```
+
+**Degradation scenario** (if only Flash available):
+
+```
+Call 0: tier="expert"   → Flash    [structure, reduced quality]
+Call 1: tier="expert"   → Flash    [opening, reduced quality]
+Call 2: tier="standard" → Flash    [middle batch 1]
+Call 3: tier="standard" → Flash    [middle batch 2]
+Call 4: tier="expert"   → Flash    [closing, reduced quality]
+```
+
+---
+
+**Why This Separation Matters**:
+
+1. **ebookService is the sole authority on ebook composition**: It decides HOW many calls, WHAT order, and WHAT quality tier each needs
+2. **aiService is the sole authority on model availability**: It knows what models exist and intelligently maps tier requirements to available options
+3. **No ebook composition logic outside ebookService**: Period. All tier declarations happen inside ebookService
+4. **Resilient to resource constraints**: Works with any available model set—composition never fails due to missing models
+5. **Flexible model substitution**: Add Pro-2 or remove Flash? Update preferences, aiService automatically adapts
+
+---
+
+**Note on ebookService Strategies**:
+
+ebookService may internally use different composition strategies (Legacy Sequential, NAT-CONT_0, etc.), but **all strategies follow the same architectural pattern**: declare semantic tier requirements, let aiService intelligently resolve them to available models. The strategy choice is an internal ebookService concern, not an architectural pattern difference.
+
+### 3. Scalable Service Architecture
+
+**Pattern**: Multiple independent media services (ebook, wallart, calendar, poetry, blog) all follow the same interface contract.
+
+Each service:
+
+- ✓ Generates content with semantic clarity
+- ✓ Zero awareness of quotas, scheduling, or rate-limiting
+- ✓ Calls aiService with callIndex for implicit model selection
+- ✓ Independently testable with mocked aiService
+- ✓ Automatically contributes to unified accounting (no integration needed)
+
+**Benefits**:
+
+1. **Uniformity**: All services follow same contract
+2. **Reusability**: Single infrastructure handles all services
+3. **Independence**: Add services without touching infrastructure
+4. **Testability**: Mock only aiService, ignore infrastructure
+5. **Zero Coupling**: Services unaware of each other and infrastructure
+
+---
+
 ⚠️ **Key Challenges**:
 
 - Infrastructure timeout (60s) vs. generation time (50s) leaves thin margin
 - Current sequential approach doesn't scale beyond ~10-15 pages
-- No background job queue means frontend must poll for completion
+- FIFO scheduler (upcoming) will add queueing complexity but improve reliability
+- Need distributed coordination for multi-instance deployments
 
-These are architectural, not implementation issues—resolvable with feature additions.
+These are architectural decisions with known tradeoffs—resolvable with feature additions.
