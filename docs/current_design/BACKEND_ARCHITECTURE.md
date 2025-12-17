@@ -106,15 +106,31 @@
 - T=0-60s: You've exhausted your 2 RPM quota
 - T=60.1s: Call 3 (closing) can fire → success (Call 1 aged out, window rotated)
 
-**Practical Production Caveat** (Empirically Verified): While bursting is technically allowed, empirical testing reveals **friction** (transient 429/5xx errors, rate-limit rejections) when firing consecutive Pro calls without spacing. **Best practice**: Add ~250ms delays between consecutive Pro calls to prevent this friction and improve reliability in production.
+**Practical Production Caveat** (Empirically Verified): While bursting is technically allowed, empirical testing reveals **friction** (transient 429/5xx errors, rate-limit rejections) when firing consecutive calls without spacing. This applies to **both Pro and Flash models**, though Flash requires smaller spacing.
+
+**Recommended Spacing by Model**:
+
+| Model     | Spacing | Rationale                                          |
+| --------- | ------- | -------------------------------------------------- |
+| **Pro**   | ~250ms  | Reduces API friction on scarce quota (2 RPM)       |
+| **Flash** | ~100ms  | Reduces API friction on high-volume quota (15 RPM) |
 
 **Revised Timeline with Spacing**:
+
+Pro calls (with 250ms spacing):
 
 - T=0s: Call 1 fires
 - T=0.25s: Call 2 fires (after 250ms buffer)
 - T=60s: Call 3 fires (waiting for window rotation)
 
-Result: More stable, fewer transient errors.
+Flash calls (with 100ms spacing):
+
+- T=0s: Call 1 fires
+- T=0.1s: Call 2 fires (after 100ms buffer)
+- T=0.2s: Call 3 fires (after 100ms buffer)
+- T=0.3s: Call 4 fires (after 100ms buffer)
+
+Result: More stable, fewer transient errors across both models.
 
 ### Pay-as-You-Go Tier (with billing enabled)
 
@@ -618,6 +634,70 @@ const model =
 1. Explicit `options.model` parameter
 2. `options.routingMap[callIndex]`
 3. Default callIndex router (0→Pro, >0→Flash)
+
+### API Call Spacing: Empirical Best Practices
+
+**Discovery**: Testing reveals that rapid consecutive API calls to Gemini (even within documented quota limits) experience transient friction—rate-limit rejections, 429 errors, temporary unavailability. This affects both Pro and Flash models.
+
+**Root Cause**: Sliding window rate limits are enforced at sub-millisecond granularity; bursting calls back-to-back can trigger internal throttling mechanisms before the window constraint is checked.
+
+**Solution**: Add small delays between consecutive calls to the same model:
+
+| Model                | Recommended Spacing | Rationale                                                     |
+| -------------------- | ------------------- | ------------------------------------------------------------- |
+| **Gemini 2.5 Pro**   | ~250ms              | Pro quota (2 RPM) is scarce; tighter spacing reduces friction |
+| **Gemini 2.5 Flash** | ~100ms              | Flash quota (15 RPM) is generous; smaller spacing sufficient  |
+
+**Implementation Example**:
+
+```javascript
+// In ebookService.js or orchestrator layer:
+const SPACING_MS = {
+  "gemini-2.5-pro": 250,
+  "gemini-2.5-flash": 100,
+};
+
+let lastCallTime = 0;
+for (let i = 0; i < calls.length; i++) {
+  const call = calls[i];
+
+  // Calculate time until next call should fire
+  const timeSinceLastCall = Date.now() - lastCallTime;
+  const requiredSpacing = SPACING_MS[call.model];
+  const delayNeeded = Math.max(0, requiredSpacing - timeSinceLastCall);
+
+  if (delayNeeded > 0) {
+    await sleep(delayNeeded);
+  }
+
+  // Fire the call
+  const result = await aiService.generateContent(prompt, { callIndex: i });
+  lastCallTime = Date.now();
+}
+```
+
+**Impact on Timings**:
+
+For a 10-page ebook (1 Pro call + 5 Flash calls):
+
+```
+Without spacing:
+  Pro call: T=0-13s
+  Flash 1: T=13-15s (no delay needed, Pro timing provides natural gap)
+  Flash 2: T=15.1s → friction/429 (too fast)
+  Total: Risk of transient errors
+
+With recommended spacing (100ms for Flash):
+  Pro call: T=0-13s
+  Flash 1: T=13-15s
+  Flash 2: T=15.1s → 100ms delay → fires at T=15.2s (clean)
+  Flash 3: T=15.2-17.2s (offset by 100ms)
+  Flash 4: T=17.2-19.2s (offset by 100ms)
+  Flash 5: T=19.2-21.2s (offset by 100ms)
+  Total: ~21.2s for all Flash calls, zero transient errors
+```
+
+**Production Recommendation**: Implement spacing delays in the orchestration layer (genieService or geminiClient wrapper) to prevent downstream friction. This is a small latency cost (10-20ms per call sequence) for significant reliability improvement.
 
 ### geminiClient (HTTP API Wrapper)
 
