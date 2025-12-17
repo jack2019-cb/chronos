@@ -64,9 +64,11 @@ class RealAIService {
     const generationConfig = this.options.generationConfig || {};
 
     // Determine which model to use based on:
-    // 1. Routing map (if provided via options.routingMap)
+    // 1. Routing map (if provided via options.routingMap from orchestrator)
     // 2. Explicit model override (if provided via options.model)
-    // 3. Default callIndex-based routing
+    // 3. Default callIndex-based routing (NAT-CONT_0):
+    //    - callIndex=0: structure generation (Pro)
+    //    - callIndex>=1: chapter/opening/closing (Pro for odd indices, Flash for even)
     const routingMap = options.routingMap || {};
     const modelFromMap = routingMap[callIndex];
     const model =
@@ -128,16 +130,18 @@ class RealAIService {
   }
 
   /**
-   * Generate content with model rotation for quota distribution
+   * Generate content with model rotation for NAT-CONT_0 quota distribution
    * Single API key accesses both models to distribute quota:
-   * Structure calls (index=0) use Gemini 2.5 Pro (primary model)
-   * Chapter calls (index>0) use Gemini 2.5 Flash (secondary model)
-   * This distributes the 10 req/min free tier quota across two different models
+   * - Structure call (index=0): Gemini 2.5 Pro (expert tier)
+   * - Opening chapter (index=1): Gemini 2.5 Pro (expert tier)
+   * - Chapter batches (index>=2): Gemini 2.5 Flash (standard tier)
+   * - Closing chapter (index=pageCount): Gemini 2.5 Pro (expert tier)
+   *
    * @param {string} prompt - The prompt text
-   * @param {number} callIndex - Index of the call (0=structure, 1+=chapters)
+   * @param {number} callIndex - Index of the call (semantic tier routing)
    * @param {Object} options - Optional overrides { routingMap, model }
    *   - routingMap: { callIndex: model } mapping from orchestrator
-   *   - model: explicit model override for complex strategies (e.g., NAT-CONT_0)
+   *   - model: explicit model override for complex strategies
    * @returns {Promise<Object>} Generated content
    */
   async generateContentWithRotation(prompt, callIndex = 0, options = {}) {

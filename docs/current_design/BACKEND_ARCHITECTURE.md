@@ -1,13 +1,14 @@
-# AetherPress Backend Architecture — REFRESHED
+# AetherPress Backend Architecture — NAT-CONT_0 (Clean)
 
 ## Implementation-Based Deep Dive
 
-**Date**: December 18, 2025 (Corrected)  
+**Date**: December 18, 2025 (NAT-CONT_0 Pure)  
+**Branch**: `feat/ebook-nat-cont` (Legacy-free, single strategy)  
 **Scope**: Scope 2 - Backend Architecture (Implementation Verified)  
 **Target Audience**: Backend developers, DevOps, API consumers  
 **Reading Time**: ~20-25 minutes
 
-**Status**: ✅ IMPLEMENTATION-VERIFIED (Reverse-engineered from actual source code)
+**Status**: ✅ IMPLEMENTATION-VERIFIED (NAT-CONT_0 only, no legacy code)
 
 **Related**:
 
@@ -24,13 +25,12 @@
 3. [Gemini API Rate Limits](#gemini-api-rate-limits)
 4. [Quota Management System](#quota-management-system)
 5. [Orchestration Layer (genieService)](#orchestration-layer)
-6. [Ebook Service (Two Strategies)](#ebook-service)
+6. [Ebook Service (NAT-CONT_0)](#ebook-service)
 7. [AI Service Integration](#ai-service-integration)
 8. [Request/Response Flow](#requestresponse-flow)
 9. [Error Handling & Quota Deferral](#error-handling)
 10. [Performance Characteristics](#performance-characteristics)
 11. [Database Layer](#database-layer)
-12. [Actual vs. Documented Discrepancies](#discrepancies)
 
 ---
 
@@ -512,115 +512,26 @@ The ebook service (`ebookService.handle()`) supports two distinct generation str
 
 - Simple, sequential chapter generation
 - Single callIndex-based routing (Pro for structure, Flash for chapters)
-- Minimal complexity
 
-**2. NAT-CONT_0** (narrative continuity, when `metadata.strategy === "nat-cont_0"`)
+### Ebook Service Architecture
 
-- Semantic call routing (tier-aware)
-- Batch chapter generation
-- Advanced orchestration
+**Single Strategy**: NAT-CONT_0 (Narrative Continuity)
 
-### Strategy 1: Legacy Sequential ⚠️ DEPRECATED
+This branch implements only the NAT-CONT_0 orchestration strategy for ebook generation. No legacy sequential code. No strategy detection conditionals.
 
-**Status**: This strategy is **DEPRECATED**. The `ebookService` is the final authority on how ebooks are formed and now recommends NAT-CONT_0.
-
-**Entry Point**: [server/ebookService.js#L40](../../../../server/ebookService.js)
+**Entry Point**: [server/ebookService.js](../../../../server/ebookService.js)
 
 ```javascript
 async function handle(payload, classification) {
-  const { prompt } = payload;
-  const { pageCount = 8, theme = "dark", strategy } = payload.metadata || {};
-
-  // Legacy path (when strategy !== "nat-cont_0")
-  if (strategy !== "nat-cont_0") {
-    console.log(
-      "[EBOOK] Using strategy: legacy (default sequential) - DEPRECATED"
-    );
-
-    // Sequential flow (deprecated):
-    // Step 1: Structure generation (callIndex=0, Pro)
-    // Step 2-N: Chapter generation loop (callIndex=1..N, Flash)
-    // Step N+1: Compose HTML
-
-    return handleLegacy(payload);
-  }
-
-  // Otherwise, use NAT-CONT_0...
-}
-```
-
-**Deprecation Note**: Use NAT-CONT_0 instead for better narrative continuity and semantic tier routing.
-
-**Process** (Legacy Path):
-
-```javascript
-// 1. STRUCTURE GENERATION (callIndex=0)
-//    Uses Gemini 2.5 Pro (primary model)
-const structurePrompt = `Create a ${pageCount}-page eBook structure for:\n"${prompt}"
-                        \n\nReturn JSON: {title, chapters, outline}`;
-
-let structureResp = await aiSvc.generateContentWithRotation(structurePrompt, 0);
-// callIndex=0 → triggers Pro model selection in geminiClient
-```
-
-**Call Pattern**:
-
-```
-callIndex=0  → Structure generation (Pro) [1 call]
-callIndex=1  → Chapter 1 (Flash) [1 call]
-callIndex=2  → Chapter 2 (Flash) [1 call]
-callIndex=3  → Chapter 3 (Flash) [1 call]
-...
-callIndex=N  → Chapter N (Flash) [1 call]
-             TOTAL: 1 (Pro) + N (Flash) = N+1 calls
-```
-
-**Model Selection Logic** (in `geminiClient.callGemini()`):
-
-```javascript
-if (model === "gemini-2.5-pro") {
-  // Use Pro endpoint/key
-  apiUrl = process.env.GEMINI_API_URL_PRO || ...;
-  rawKey = process.env.GEMINI_API_KEY_PRO || ...;
-} else if (model === "gemini-2.5-flash") {
-  // Use Flash endpoint/key
-  apiUrl = process.env.GEMINI_API_URL_FLASH || ...;
-  rawKey = process.env.GEMINI_API_KEY_FLASH || ...;
-} else {
-  // Fallback (if model parameter not provided)
-  if (callIndex === 0) {
-    // Infer Pro for structure
-    use Pro endpoint/key
-  } else {
-    // Infer Flash for chapters
-    use Flash endpoint/key
-  }
-}
-```
-
-**Timing**:
-
-- Structure: ~3-5 seconds
-- Each chapter: ~4-6 seconds
-- Total for 8-page ebook: ~40-50 seconds
-
----
-
-### Strategy 2: NAT-CONT_0 (Narrative Continuity)
-
-**When Used**: `payload.metadata.strategy === "nat-cont_0"`
-
-**Purpose**: Implement semantic call routing with tier-aware quota allocation
-
-**Entry Point**: [server/ebookService.js#L904](../../../../server/ebookService.js)
-
-```javascript
-if (strategy === "nat-cont_0") {
-  console.log("[EBOOK] Using strategy: nat-cont_0");
+  // Direct NAT-CONT_0 orchestration (no conditionals)
   const result = await handleNARRATIVE_CONT_0(payload, aiSvc);
   return result;
 }
 ```
+
+## NAT-CONT_0 (Narrative Continuity)
+
+**Purpose**: Implement semantic call routing with tier-aware quota allocation
 
 **Architecture**:
 
@@ -660,23 +571,11 @@ callIndex  | Tier      | Model      | Count | Pages  | Purpose
            |           | TOTAL      | 9     | 10     | NAT-CONT_0
 ```
 
-**vs. Legacy**:
+**Cost Calculation**:
 
-```
-Legacy:
-callIndex=0 (Pro) → structure [1]
-callIndex=1..5 (Flash) → chapters [5]
-TOTAL: 6 calls
+Single integer cost model: `cost = 1 + ceil(pageCount / 2)`
 
-NAT-CONT_0:
-callIndex=0 (Pro) → structure [1]
-callIndex=1..5 (Flash/Pro) → chapters [5]
-TOTAL: 6 calls (same), but with semantic routing
-```
-
-**Cost Calculation** (if split by tier):
-
-Would be `{ pro: 2, flash: 4 }` for example, but actual implementation treats as single integer.
+For 10-page ebook: `1 + ceil(10/2) = 1 + 5 = 6 calls`
 
 ---
 
@@ -1027,103 +926,19 @@ if (ENABLE_PERSISTENCE) {
 
 ---
 
-## Actual vs. Documented Discrepancies
-
-### What's Different from Earlier Docs
-
-| Aspect                | Earlier Doc                  | Actual Implementation         | Status         |
-| --------------------- | ---------------------------- | ----------------------------- | -------------- |
-| **Quota Model**       | "Separate Pro/Flash windows" | Single global 20-call window  | ⚠️ CORRECTED   |
-| **Cost Calculation**  | `{pro: N, flash: N}`         | Single integer (cost)         | ⚠️ SIMPLIFIED  |
-| **NAT-CONT_0 Status** | "Planned"                    | Implemented & selectable      | ✅ COMPLETE    |
-| **Quota Deferral**    | "Optional"                   | Required (202 responses)      | ✅ ACTIVE      |
-| **Persistence**       | "Mentioned"                  | Full idempotency + async save | ✅ IMPLEMENTED |
-| **Spacing Caveat**    | Documented for Pro           | Applies to both Pro & Flash   | ✅ CLARIFIED   |
-
-### Why the Discrepancies?
-
-1. **Evolution**: Code evolved faster than documentation
-2. **Pragmatism**: Single global quota simpler than per-model tracking
-3. **NAT-CONT_0**: Later addition, not yet in early architectural docs
-4. **Spacing Finding**: Empirical discovery during development
-
----
-
-## Future Adjustments Needed
-
-Based on this implementation review, consider:
-
-1. **Async Job Queue**: Current architecture blocks on 50s generation
-
-   - Could return 202 + jobId immediately, notify client when ready
-   - Requires background job processor (Redis, RabbitMQ, or simple queue)
-
-2. **Progressive Streaming**: Send partial results (pages) as they complete
-
-   - Server-Sent Events (SSE) or WebSocket for real-time updates
-   - Requires refactoring service layer to emit progress events
-
-3. **Separated Quota Pools**: Restore Pro/Flash split for better utilization
-
-   - Requires schema change to quotaTracker
-   - Benefits: Can generate more complex ebooks with Pro tier
-
-4. **Caching Optimization**: Persist intermediate results (structure, chapters)
-
-   - Allows resuming failed ebook generation
-   - Reduces re-computation on retries
-
-5. **Scaling Model Rotation**: Add adaptive model selection
-   - Choose Flash first for cost savings, fall back to Pro only when needed
-   - Requires cost-aware orchestration logic
-
----
-
 ## Summary
 
-The AetherPress backend is fundamentally sound:
+The AetherPress backend `feat/ebook-nat-cont` branch is fundamentally sound:
 
-✅ **Solid quota protection**: Single global window prevents API abuse
+✅ **Single pure strategy**: NAT-CONT_0 only, no legacy sequential code
+✅ **Direct orchestration**: No strategy detection conditionals
+✅ **Semantic tier routing**: Expert (Pro) for structure/opening/closing, Standard (Flash) for middle chapters
+✅ **Solid quota protection**: Single global 20-call/60s window prevents API abuse
 ✅ **Smart caching**: Idempotency avoids double-charging on retries
-✅ **Flexible routing**: NAT-CONT_0 strategy ready for advanced scenarios
 ✅ **Graceful degradation**: 202 responses defer requests cleanly
 ✅ **Detailed logging**: Full trace via requestId and service logs
 
----
-
-## Architectural Patterns
-
-### 1. Infrastructure Accounting as Separate Plumbing
-
-**Core insight**: Separate content generation logic from infrastructure concerns (model routing). Services (ebookService) have zero awareness of accounting.
-
-**Why this matters**: This enables independent evolution and testability.
-
-**Key clarification** (Updated Dec 17, 2025):
-
-- **Quota and rate-limiting** will now be handled by a **FIFO scheduler** (architecture to be documented separately)
-- **Model routing** remains an infrastructure layer concern (callIndex-based implicit selection)
-- Services remain completely decoupled from both quota tracking AND scheduling logic
-
-**What Stays in Service Layer**:
-
-Each service (ebookService, wallArtService, calendarService, etc.) owns:
-
-1. **Business composition logic**: Decide HOW MANY calls are needed, IN WHAT ORDER, for coherent output
-2. **Semantic tier declarations**: For each call, declare WHAT tier that call requires (`tier: "expert"` vs `tier: "standard"`) based on that specific service's composition needs
-3. **Content assembly**: Combine results into final business output (HTML, image, calendar data, etc.)
-
-ebookService declares tiers specific to ebook composition. wallArtService declares tiers specific to art generation. Each service's tier declarations are unique to its business logic and have zero overlap with other services.
-
-**What Stays in Infrastructure Layers**:
-
-| Layer              | Concern        | Responsibility                                                                                                  |
-| ------------------ | -------------- | --------------------------------------------------------------------------------------------------------------- |
-| **FIFO Scheduler** | Quota + timing | Queue jobs, enforce FIFO ordering, manage delays                                                                |
-| **genieService**   | Routing        | "Which service handler for this request?"                                                                       |
-| **aiService**      | Model routing  | Map tier declarations (from any service) to available models; gracefully degrade if preferred model unavailable |
-
----
+**Pipeline Separation Achievement**: This branch is completely self-contained with zero legacy contamination, implementing the PIPELINE_SEPARATION_BLUEPRINT mandate for complete branch independence.
 
 ### The Firewall Pattern: Service ↔ Orchestrator ↔ Infrastructure
 

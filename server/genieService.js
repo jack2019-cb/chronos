@@ -122,15 +122,15 @@ function calculateCostForMode(mode, metadata = {}) {
  * Returns semantic description of which calls need special handling.
  *
  * @param {string} mode - Service mode: 'ebook', 'poetry', 'blog', etc.
- * @param {object} metadata - Service metadata with pageCount, strategy, etc.
+ * @param {object} metadata - Service metadata with pageCount, etc.
  * @returns {object} Requirements object with calls array
  */
 function getCallRequirements(mode, metadata = {}) {
-  const { pageCount = 8, strategy = "default" } = metadata;
+  const { pageCount = 8 } = metadata;
 
-  // NAT-CONT_0 strategy requires semantic routing
-  if (mode === "ebook" && strategy === "nat-cont_0") {
-    // NAT-CONT structure: structure(0) + opening(1) + content(2..pageCount-1) + closing(pageCount)
+  // NAT-CONT_0 (Narrative Continuity) for ebook mode
+  // Structure: structure(0) + opening(1) + content(2..pageCount-1) + closing(pageCount)
+  if (mode === "ebook") {
     return {
       mode: "ebook",
       strategy: "nat-cont_0",
@@ -166,10 +166,10 @@ function getCallRequirements(mode, metadata = {}) {
     };
   }
 
-  // Default (no special routing): standard structure + chapter pattern
+  // Default for non-ebook modes
   return {
     mode,
-    strategy: strategy || "default",
+    strategy: "default",
     pageCount,
     calls: [], // Empty = use default callIndex-based routing
   };

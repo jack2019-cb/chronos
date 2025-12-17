@@ -35,14 +35,9 @@ async function generateFromPrompt(prompt) {
 
 /**
  * Handle enhanced payload for ebook mode
- * Generates ebook content without orchestrating utility services
- * (Those are handled by genieService orchestrator if needed)
- *
- * Supports multiple generation strategies via metadata.strategy:
- * - "nat-cont_0": NAT-CONT (Pro for structure/ch1/final, Flash for batches)
- * - undefined/default: Legacy sequential single-chapter generation
- *
- * @param {Object} payload - { prompt, metadata: { theme, pageCount, colorPalette, fontSizeScale, strategy } }
+ * Generates ebook content using NAT-CONT_0 (Narrative Continuity) strategy
+ * 
+ * @param {Object} payload - { prompt, metadata: { theme, pageCount, colorPalette, fontSizeScale } }
  * @param {Object} classification - Optional classification data from genieService
  * @returns {Promise<Object>} Handler result { pages, metadata, html, actions }
  */
@@ -61,7 +56,6 @@ async function handle(payload, classification) {
     pageCount = 8,
     colorPalette = "standard",
     fontSizeScale = 1.0,
-    strategy = undefined,
   } = payload.metadata || {};
 
   // Basic input validation
@@ -100,358 +94,42 @@ async function handle(payload, classification) {
     };
   }
 
-  // Strategy dispatch: NAT-CONT_0 for optimized generation
-  if (strategy === "nat-cont_0") {
-    console.log("[EBOOK] Using strategy: nat-cont_0 (Narrative Continuity)");
-    const result = await handleNARRATIVE_CONT_0(payload, aiSvc);
-    // Transform NAT-CONT result to match legacy output format
-    // append processing timing
-    const procMs = Date.now() - startTime;
-    result.metadata = {
-      ...(result.metadata || {}),
-      processingTimeMs: procMs,
-    };
+  // Direct NAT-CONT_0 orchestration (no conditionals)
+  const result = await handleNARRATIVE_CONT_0(payload, aiSvc);
 
-    console.log(
-      `[EBOOK] handle COMPLETE (nat-cont) requestId=${requestId} processingTimeMs=${procMs}`
-    );
+  // Append processing timing
+  const procMs = Date.now() - startTime;
+  result.metadata = {
+    ...(result.metadata || {}),
+    processingTimeMs: procMs,
+  };
 
-    return {
-      title: result.metadata?.title || result.pages?.[0]?.title || "eBook",
-      pages: result.pages,
-      html: result.html,
-      metadata: {
-        ...result.metadata,
-        model: "nat-cont_0",
-        source: "ebook",
-        theme,
-        colorPalette,
-        fontSizeScale,
-        classification,
-      },
-      actions: {
-        persist_prompt: true,
-        generate_pdf: true,
-        can_export: true,
-        can_preview: true,
-        can_override: true,
-      },
-    };
-  }
-
-  // Legacy implementation for default strategy
-  console.log("[EBOOK] Using strategy: legacy (default sequential generation)");
-
-  // Strategy: To avoid Gemini free tier quota limits (10 requests/min per key),
-  // distribute calls across different models:
-  // - Structure call uses Gemini 2.5 Pro (primary, callIndex=0)
-  // - Chapter calls use Gemini 2.5 Flash (secondary, callIndex=1+)
-  // Single API key accesses both models, distributing quota:
-  // 1 structure + N chapters = quota spread across two model quotas
   console.log(
-    "[EBOOK] Using model rotation: Pro for structure, Flash for chapters"
+    `[EBOOK] handle COMPLETE (nat-cont_0) requestId=${requestId} processingTimeMs=${procMs}`
   );
 
-  try {
-    // Conversation 1: Request structure (try to get JSON from AI)
-    console.log("[EBOOK] Starting ebookService.handle()");
-    console.log("[EBOOK] pageCount:", pageCount);
-    console.log("[EBOOK] theme:", theme);
-    console.log("[GEMINI] Conversation 1 - Requesting structure");
-    console.log(
-      "[GEMINI] Prompt topic:",
-      String(prompt).substring(0, 100) + "..."
-    );
-
-    const structurePrompt = `Create a detailed structure for a ${pageCount}-page eBook based on:\n"${String(
-      prompt
-    )}\"\n\nReturn JSON with keys: title, chapters (number), outline: [{ chapter, title, estimated_topics: [] }]`;
-
-    // Use call index 0 for structure (primary model: Gemini 2.5 Pro)
-    let structureResp = await (aiSvc.generateContentWithRotation
-      ? aiSvc.generateContentWithRotation(structurePrompt, 0)
-      : aiSvc.generateContent(structurePrompt));
-    let structure = null;
-
-    // Try to parse JSON from AI response body or title
-    const tryParse = (text) => {
-      if (!text) return null;
-      // If already an object, return it
-      if (typeof text === "object") return text;
-      if (typeof text !== "string") return null;
-
-      // Quick attempt: full-text JSON.parse
-      try {
-        if (/^[\s]*[\[{]/.test(text)) {
-          return JSON.parse(text);
-        }
-      } catch (e) {
-        // fall through to extraction
-      }
-
-      // attempt to find a JSON block inside text
-      const jsonMatch = text.match(/\{[\s\S]*\}/m);
-      if (jsonMatch) {
-        try {
-          return JSON.parse(jsonMatch[0]);
-        } catch (e) {
-          return null;
-        }
-      }
-      return null;
-    };
-
-    const aiText =
-      (structureResp &&
-        (structureResp.content?.body ||
-          structureResp.content?.title ||
-          structureResp.rawText)) ||
-      "";
-    structure = tryParse(aiText);
-
-    console.log("[GEMINI] Conversation 1 - Response received:");
-    console.log("[GEMINI] Structure title:", structure?.title || "NOT FOUND");
-    console.log("[GEMINI] Chapters outline:", structure?.outline?.length || 0);
-
-    // Check if title matches prompt
-    const promptTopic = String(prompt).split(/\s+/)[0];
-    const titleMatch = structure?.title
-      ?.toLowerCase()
-      .includes(promptTopic.toLowerCase())
-      ? "MATCHES"
-      : "MISMATCH";
-    console.log("[GEMINI] Title-Prompt match:", titleMatch);
-
-    // Fallback heuristic: if AI didn't return structured JSON, create a simple outline
-    if (!structure || !Array.isArray(structure.outline)) {
-      const approxChapters = Math.max(
-        2,
-        Math.min(10, Math.ceil(pageCount / 2))
-      );
-      const outline = Array.from({ length: approxChapters }).map((_, i) => ({
-        chapter: i + 1,
-        title: `Chapter ${i + 1}`,
-        estimated_topics: [`Topic ${i + 1}`],
-      }));
-      structure = {
-        title: `Ebook: ${String(prompt).split(/\s+/).slice(0, 6).join(" ")}`,
-        chapters: outline.length,
-        outline,
-      };
-      console.log(
-        "[EBOOK] Using fallback structure with",
-        outline.length,
-        "chapters"
-      );
-    }
-
-    // Conversation 2+: Sequential per-chapter generation
-    const chapters = [];
-    console.log(
-      "[EBOOK] Starting chapter generation loop, outline length:",
-      structure.outline.length
-    );
-    for (let i = 0; i < structure.outline.length; i++) {
-      const ch = structure.outline[i];
-      const prevSummary = i > 0 ? chapters[i - 1].summary || "" : "";
-
-      console.log(
-        `[EBOOK] Chapter ${i + 1}/${
-          structure.outline.length
-        }: Starting generation for "${ch.title}"`
-      );
-
-      const contentPrompt = `You are writing Chapter ${ch.chapter}: \"${
-        ch.title
-      }\"\n\nContext: Total eBook: ${pageCount} pages. This chapter ${
-        ch.chapter
-      } of ${structure.outline.length}. Key topics: ${(
-        ch.estimated_topics || []
-      ).join(
-        ", "
-      )}. Previous summary: ${prevSummary}\n\nReturn JSON: { chapter: number, title: string, content: string, summary: string, image: { concept: string, suggested_style: string, tone: string } }`;
-
-      let chapterResp = null;
-      try {
-        console.log(
-          `[EBOOK] Chapter ${i + 1}/${
-            structure.outline.length
-          }: Calling aiSvc.generateContentWithRotation() with callIndex=${
-            i + 1
-          }`
-        );
-        const chapterStartTime = Date.now();
-        // Use call index (i+1) for chapters, enabling quota rotation to Gemini 2.5 Flash
-        chapterResp = aiSvc.generateContentWithRotation
-          ? await aiSvc.generateContentWithRotation(contentPrompt, i + 1)
-          : await aiSvc.generateContent(contentPrompt);
-        const chapterEndTime = Date.now();
-        console.log(
-          `[EBOOK] Chapter ${i + 1}/${
-            structure.outline.length
-          }: AI response received in ${chapterEndTime - chapterStartTime}ms`
-        );
-      } catch (err) {
-        // Non-fatal: fall back to simple generated content
-        console.error(
-          `[EBOOK] Chapter ${i + 1}/${
-            structure.outline.length
-          }: AI generation failed, using fallback`
-        );
-        console.error(`[EBOOK] Error: ${err?.message}`);
-        chapterResp = {
-          content: {
-            title: ch.title,
-            body: `Content for ${ch.title}\n\n${String(prompt).slice(0, 200)}`,
-          },
-        };
-      }
-
-      const chapterText =
-        (chapterResp &&
-          (chapterResp.content?.body ||
-            chapterResp.content?.title ||
-            chapterResp.rawText)) ||
-        "";
-      let chapterData = tryParse(chapterText);
-
-      if (!chapterData) {
-        // heuristics to build chapterData
-        const body =
-          chapterText && chapterText.length > 0
-            ? chapterText
-            : `Placeholder content for ${ch.title}.`;
-
-        // Try to extract image fields from plain text (e.g. JSON-like snippets)
-        let extractedConcept = null;
-        let extractedStyle = null;
-        let extractedTone = null;
-        try {
-          const mConcept = String(chapterText).match(
-            /"concept"\s*:\s*"([^"]+)"/i
-          );
-          if (mConcept) extractedConcept = mConcept[1];
-          const mStyle = String(chapterText).match(
-            /"suggested_style"\s*:\s*"([^"]+)"/i
-          );
-          if (mStyle) extractedStyle = mStyle[1];
-          const mTone = String(chapterText).match(/"tone"\s*:\s*"([^"]+)"/i);
-          if (mTone) extractedTone = mTone[1];
-        } catch (e) {
-          // ignore extraction errors
-        }
-
-        // If the active AI service is the built-in MockAIService used in tests,
-        // prefer a deterministic concept so unit tests can assert reliably.
-        const isBuiltinMock = !!(
-          aiSvc &&
-          aiSvc.constructor &&
-          aiSvc.constructor.name === "MockAIService"
-        );
-
-        chapterData = {
-          chapter: ch.chapter || i + 1,
-          title: ch.title || `Chapter ${i + 1}`,
-          content: body,
-          summary: (body || "").split("\n").slice(0, 1).join(" ").slice(0, 200),
-          image: {
-            concept:
-              extractedConcept ||
-              (isBuiltinMock
-                ? `Concept ${ch.chapter || i + 1}`
-                : `Illustration for ${ch.title}`),
-            suggested_style: extractedStyle || null,
-            tone: extractedTone || "neutral",
-          },
-        };
-      }
-
-      // Determine image style (theme default + optional AI suggestion)
-      const themeDefaults = {
-        dark: "gothic",
-        light: "bright",
-        corporate: "professional",
-        bold: "vibrant",
-      };
-      const aiSuggested =
-        chapterData.image && chapterData.image.suggested_style;
-      const style =
-        aiSuggested && typeof aiSuggested === "string"
-          ? aiSuggested
-          : themeDefaults[theme] || "gothic";
-
-      chapters.push({
-        id: `ch_${i + 1}`,
-        chapter: chapterData.chapter || i + 1,
-        title: chapterData.title || ch.title || `Chapter ${i + 1}`,
-        content: chapterData.content || "",
-        summary: chapterData.summary || "",
-        image: {
-          concept:
-            (chapterData.image && chapterData.image.concept) ||
-            `A scene representing ${ch.title}`,
-          style,
-          tone: (chapterData.image && chapterData.image.tone) || "neutral",
-          palette_hint: colorPalette,
-          size_hint: "full-width",
-        },
-      });
-    }
-
-    const density =
-      pageCount <= 5
-        ? "light"
-        : pageCount <= 10
-        ? "medium"
-        : pageCount <= 15
-        ? "dense"
-        : "very-dense";
-
-    // Build pages array for compatibility with composer (simple mapping)
-    const pages = chapters.map((c, idx) => ({
-      id: c.id,
-      title: c.title,
-      content: c.content,
-      image: c.image,
-    }));
-
-    const chaptersDoneMs = Date.now() - startTime;
-    console.log(
-      "[EBOOK] Chapter generation complete, total chapters:",
-      chapters.length,
-      `elapsed=${chaptersDoneMs}ms`
-    );
-    console.log(`[EBOOK] Returning structured envelope requestId=${requestId}`);
-
-    // Return structured envelope following README contract
-    return {
-      title: structure.title, // FIX: Include title for compose() to use in cover page
-      pages,
-      html: null, // composition delegated to genieService.compose()
-      metadata: {
-        title: structure.title, // Also include in metadata for export orchestrator
-        model: "ebook-v1",
-        processingTimeMs: Date.now() - startTime,
-        pages_count: pageCount,
-        source: "ebook",
-        theme,
-        colorPalette,
-        fontSizeScale,
-        density,
-        classification,
-      },
-      actions: {
-        persist_prompt: true,
-        generate_pdf: true,
-        can_export: true,
-        can_preview: true,
-        can_override: true,
-      },
-    };
-  } catch (error) {
-    console.error("Error in ebookService.handle():", error && error.message);
-    throw error;
-  }
+  return {
+    title: result.metadata?.title || result.pages?.[0]?.title || "eBook",
+    pages: result.pages,
+    html: result.html,
+    metadata: {
+      ...result.metadata,
+      model: "nat-cont_0",
+      source: "ebook",
+      theme,
+      colorPalette,
+      fontSizeScale,
+      classification,
+    },
+    actions: {
+      persist_prompt: true,
+      generate_pdf: true,
+      can_export: true,
+      can_preview: true,
+      can_override: true,
+    },
+  };
+}
 }
 
 /**
