@@ -1,1488 +1,1090 @@
-# AetherPress Backend Architecture
+# AetherPress Backend Architecture — REFRESHED
 
-**Date**: December 16, 2025 @ 8:50AM
-**Scope**: Scope 2 - Backend Architecture (Implementation-Based)  
+## Implementation-Based Deep Dive
+
+**Date**: December 17, 2025  
+**Scope**: Scope 2 - Backend Architecture (Implementation Verified)  
 **Target Audience**: Backend developers, DevOps, API consumers  
-**Reading Time**: ~15-20 minutes
+**Reading Time**: ~20-25 minutes
 
-**Status**: ✅ Implementation-verified (reverse-engineered from source code)
+**Status**: ✅ IMPLEMENTATION-VERIFIED (Reverse-engineered from actual source code)
 
-**Related**: See [ARCHITECTURE_DOCUMENTATION_PROPOSAL.md](ARCHITECTURE_DOCUMENTATION_PROPOSAL.md) for documentation project overview. Historical reference: [BACKEND_ARCHITECTURE_REF0.md](BACKEND_ARCHITECTURE_REF0.md)
+**Related**:
+
+- [ARCHITECTURE_DOCUMENTATION_PROPOSAL.md](ARCHITECTURE_DOCUMENTATION_PROPOSAL.md) (4-scope project overview)
+- [PIPELINE_SEPARATION_BLUEPRINT.md](focus/PIPELINE_SEPARATION_BLUEPRINT.md) (Branch strategy)
+- Historical: [BACKEND_ARCHITECTURE_REF0.md](BACKEND_ARCHITECTURE_REF0.md)
 
 ---
 
 ## Table of Contents
 
-1. [Entry Point & HTTP Handler](#entry-point--http-handler)
-2. [Gemini API Rate Limits (Corrected)](#gemini-api-rate-limits-corrected)
-3. [Quota Management Strategy](#quota-management-strategy)
-4. [Orchestration Layer](#orchestration-layer)
-5. [Service Layer](#service-layer)
-6. [AI Service Integration](#ai-service-integration)
-7. [Database Layer](#database-layer)
-8. [Error Handling & Resilience](#error-handling--resilience)
-9. [Request/Response Flow (Detailed)](#requestresponse-flow-detailed)
+1. [System Overview](#system-overview)
+2. [HTTP Entry Point](#http-entry-point)
+3. [Gemini API Rate Limits](#gemini-api-rate-limits)
+4. [Quota Management System](#quota-management-system)
+5. [Orchestration Layer (genieService)](#orchestration-layer)
+6. [Ebook Service (Two Strategies)](#ebook-service)
+7. [AI Service Integration](#ai-service-integration)
+8. [Request/Response Flow](#requestresponse-flow)
+9. [Error Handling & Quota Deferral](#error-handling)
 10. [Performance Characteristics](#performance-characteristics)
+11. [Database Layer](#database-layer)
+12. [Actual vs. Documented Discrepancies](#discrepancies)
 
 ---
 
-## Entry Point & HTTP Handler
+## System Overview
+
+### High-Level Request Path
+
+```
+POST /api/ebook/generate
+│
+├─ Validate input (prompt, pageCount, theme, etc.)
+├─ Create payload: { mode: "ebook", prompt, metadata: {...} }
+│
+└─ genieService.process(payload)
+    ├─ ✅ Check persistence cache (avoid duplicate work)
+    ├─ 📊 Calculate cost: cost = 1 + ceil(pageCount / 2)
+    ├─ 🔐 Check quota: need cost calls in 60s window
+    │   ├─ If insufficient → throw 202 (Retry-Later)
+    │   └─ If sufficient → reserve quota and proceed
+    ├─ Dispatch to service handler:
+    │   ├─ if strategy==='nat-cont_0' → ebookService.handleNARRATIVE_CONT_0()
+    │   └─ else → ebookService.handleLegacy()
+    ├─ Record API calls in global quota tracker
+    └─ Return response envelope: { pages, html, metadata }
+│
+└─ HTTP Response
+    ├─ 200: Success { id, pages, html, metadata }
+    ├─ 202: Quota deferred { message, requiredQuota, retryAfterSeconds }
+    ├─ 400: Bad request
+    └─ 500: Server error
+```
+
+### Core Services
+
+| Service          | File                           | Responsibility                       |
+| ---------------- | ------------------------------ | ------------------------------------ |
+| **genieService** | `server/genieService.js`       | Orchestration, quota checks, routing |
+| **ebookService** | `server/ebookService.js`       | Ebook generation (two strategies)    |
+| **geminiClient** | `server/geminiClient.js`       | Raw API calls to Google Gemini       |
+| **quotaTracker** | `server/utils/quotaTracker.js` | Global 60s rolling window quota      |
+
+---
+
+## HTTP Entry Point
 
 ### POST /api/ebook/generate
 
 **File**: [server/index.js](../../../../server/index.js#L2923)
 
-**Request Validation**:
-
-```javascript
-// Line 2923: app.post("/api/ebook/generate", async (req, res, next) => {
-//   - Validate Content-Type: application/json
-//   - Parse request body: { prompt, metadata }
-//   - Check for required fields
-//   - Generate requestId (UUID) for tracing
-```
-
 **Request Schema**:
 
 ```javascript
 {
-  prompt: string,              // Required: user input prompt
-  metadata: {
-    theme: "dark" | "light",  // Optional: styling theme
-    pageCount: number,         // Optional: 3-20 pages (default varies by service)
-    colorPalette: string,      // Optional: color scheme
-    fontSizeScale: number      // Optional: 0.8-1.5
-  }
+  prompt: string,           // Required: user's topic/request
+  theme: "dark"|"light",   // Optional (default: "dark")
+  pageCount: 3-20,         // Optional (default: 10)
+  colorPalette: string,    // Optional (default: "default")
+  fontSizeScale: 0.8-1.2   // Optional (default: 1.0)
 }
 ```
 
-**Middleware Stack** (before handler):
+**Request Validation** (lines 2945-2970):
 
-1. `express.json({ limit: "50mb" })` - JSON body parser with 50MB limit
-2. `express.urlencoded({ limit: "50mb", extended: true })` - URL-encoded body parser (50MB)
+```javascript
+// Validate prompt
+if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
+  return res.status(400).json({ error: "Prompt required" });
+}
+
+// Validate theme
+const validThemes = ["dark", "light", "corporate", "bold"];
+if (!validThemes.includes(theme)) {
+  return res.status(400).json({ error: "Invalid theme" });
+}
+
+// Validate pageCount
+const pageCountNum = parseInt(pageCount, 10);
+if (isNaN(pageCountNum) || pageCountNum < 3 || pageCountNum > 20) {
+  return res.status(400).json({ error: "Page count must be 3-20" });
+}
+```
+
+**Request Timeout Configuration** (line 2934):
+
+```javascript
+// Set generous timeout for LLM processing
+req.setTimeout(600000); // 10 minutes
+res.setTimeout(600000); // 10 minutes
+```
+
+Why 10 minutes? Ebook generation can process up to 20 pages with Gemini calls, which is inherently slow.
+
+**Response Schema**:
+
+```javascript
+// Success (200):
+{
+  id: "ebook_<timestamp>_<random>",
+  pages: [
+    {
+      title: string,
+      body: string,
+      layout: string
+    },
+    ...
+  ],
+  html: string,           // Rendered HTML
+  metadata: {
+    model: "nat-cont_0" | "legacy",
+    theme: string,
+    pageCount: number,
+    processingTimeMs: number,
+    can_export: boolean,
+    can_preview: boolean,
+    can_override: boolean
+  },
+  actions: {
+    persist_prompt: boolean,
+    generate_pdf: boolean,
+    can_export: boolean,
+    can_preview: boolean,
+    can_override: boolean
+  }
+}
+
+// Quota Deferred (202):
+{
+  message: "Quota exhausted; request deferred for retry",
+  requiredQuota: number,
+  availableQuota: number,
+  retryAfterSeconds: number,
+  windowResetAtMs: number,
+  requestId: string
+}
+```
+
+**Middleware Stack** (before handlers):
+
+1. `express.json({ limit: "50mb" })` - JSON parser
+2. `express.urlencoded({ limit: "50mb" })` - URL-encoded parser
 3. `morgan()` - HTTP request logging
-4. `cors()` - Cross-origin request handling
-5. `rateLimit({ windowMs: 15 * 60 * 1000, max: 100 })` - Global rate limit (100 req/15-min)
-
-**Response Codes**:
-
-- `200` - Success, ebook generated
-- `202` - Accepted but quota deferred (see Quota Management)
-- `400` - Bad request (validation error)
-- `429` - Too many requests (global rate limit exceeded)
-- `500` - Server error
-- `503` - Service unavailable (Gemini API unreachable)
+4. `cors()` - Cross-origin support
+5. `rateLimit({ windowMs: 15*60*1000, max: 100 })` - Global rate limit (100 req/15min)
 
 ---
 
-## Gemini API Rate Limits (Corrected)
+## Gemini API Rate Limits
 
-**Source**: Google Gemini API Documentation  
-**Verification Date**: December 13, 2025
+### Free Tier Quotas (as of December 2025)
 
-### Free Tier Rate Limits
+| Model           | RPM | Notes                                    |
+| --------------- | --- | ---------------------------------------- |
+| **Flash (2.5)** | 15  | Fast, suitable for high-volume tasks     |
+| **Pro (2.5)**   | 2   | Expensive, careful reasoning, BOTTLENECK |
 
-| Model                | Requests Per Minute (RPM) | Requests Per Day (RPD) | Purpose                      |
-| -------------------- | ------------------------- | ---------------------- | ---------------------------- |
-| **Gemini 2.5 Flash** | 15 RPM                    | ~1,500 RPD             | Fast, high-volume tasks      |
-| **Gemini 2.5 Pro**   | 2 RPM                     | ~50 RPD                | Complex reasoning, expensive |
+### Critical Insight: Pro is the Bottleneck
 
-**Critical Implication**:
+- Flash: 15 RPM = **15 calls/min** = ~4ms per call slot
+- Pro: 2 RPM = **2 calls/min** = ~30s per call slot
+- **Flash is 7.5x more generous than Pro**
 
-- Flash is **7.5x more generous** on RPM than Pro
-- Pro is the bottleneck model (2 RPM = 2 calls per 60-second sliding window, NOT uniform spacing)
-- Daily limit on Pro is extremely strict (50 RPD = ~6 requests/hour)
-
-### Pro Quota Mechanics (Clarification)
+### Rate Limit Mechanics (Clarified)
 
 **Common Misconception**: "2 RPM means 1 call every 30 seconds"
 
-**Actual Behavior**: 2 RPM is a **sliding window constraint** (max 2 requests within any 60-second window), not uniform spacing. You CAN burst 2 calls back-to-back, then wait ~60 seconds for the oldest call to age out.
+**Actual Behavior**: 2 RPM is a **sliding window** constraint:
+
+- Max 2 requests in ANY 60-second window (not evenly spaced)
+- You CAN burst 2 calls back-to-back at T=0
+- Next call must wait until oldest call ages out (~T=60s)
 
 **Example Timeline**:
 
-- T=0s: Call 1 (structure) fires → success
-- T=0.5s: Call 2 (opening) fires → success (burst allowed, within 2 RPM window)
-- T=0-60s: You've exhausted your 2 RPM quota
-- T=60.1s: Call 3 (closing) can fire → success (Call 1 aged out, window rotated)
+```
+T=0s    Call 1 (structure) fires → ✅ Success
+T=0.5s  Call 2 (opening) fires → ✅ Success (burst allowed)
+T=0-60s You've exhausted Pro quota (2/2)
+T=60.1s Call 3 fires → ✅ Success (Call 1 aged out, window rotates)
+```
 
-**Practical Production Caveat** (Empirically Verified): While bursting is technically allowed, empirical testing reveals **friction** (transient 429/5xx errors, rate-limit rejections) when firing consecutive calls without spacing. This applies to **both Pro and Flash models**, though Flash requires smaller spacing.
+### Empirical Production Finding
 
-**Recommended Spacing by Model**:
+**Problem**: Bursting without spacing causes **transient friction**:
 
-| Model     | Spacing | Rationale                                          |
-| --------- | ------- | -------------------------------------------------- |
-| **Pro**   | ~250ms  | Reduces API friction on scarce quota (2 RPM)       |
-| **Flash** | ~100ms  | Reduces API friction on high-volume quota (15 RPM) |
+- 429 errors (Too Many Requests)
+- 5xx transient errors
+- Rate-limit rejections
+
+**Both Flash AND Pro show this**, but Flash requires less spacing.
+
+**Recommended Spacing** (Empirically Verified):
+
+| Model     | Spacing | Reason                                  |
+| --------- | ------- | --------------------------------------- |
+| **Pro**   | ~250ms  | Scarce quota (2 RPM), needs buffer      |
+| **Flash** | ~100ms  | Abundant quota (15 RPM), smaller buffer |
 
 **Revised Timeline with Spacing**:
 
-Pro calls (with 250ms spacing):
+```
+Pro calls (250ms spacing):
+T=0s     Call 1 fires
+T=0.25s  Call 2 fires
+T=60s    Call 3 fires (window rotated)
 
-- T=0s: Call 1 fires
-- T=0.25s: Call 2 fires (after 250ms buffer)
-- T=60s: Call 3 fires (waiting for window rotation)
+Flash calls (100ms spacing):
+T=0s     Call 1 fires
+T=0.1s   Call 2 fires
+T=0.2s   Call 3 fires
+T=0.3s   Call 4 fires
+```
 
-Flash calls (with 100ms spacing):
-
-- T=0s: Call 1 fires
-- T=0.1s: Call 2 fires (after 100ms buffer)
-- T=0.2s: Call 3 fires (after 100ms buffer)
-- T=0.3s: Call 4 fires (after 100ms buffer)
-
-Result: More stable, fewer transient errors across both models.
-
-### Pay-as-You-Go Tier (with billing enabled)
-
-| Model                | RPM       | Note                            |
-| -------------------- | --------- | ------------------------------- |
-| **Gemini 2.5 Flash** | 1,000 RPM | Scales massively for production |
-| **Gemini 2.5 Pro**   | 360 RPM   | Still lower than Flash          |
-
-### Google's Recommended Strategy
-
-> "Default to gemini-2.5-flash. Only switch specific requests to gemini-2.5-pro when Flash fails to handle correctly."
-
-**Rationale**: Avoids hitting Pro's 2 RPM limit and daily 50 RPD quota wall.
+**Result**: More stable API, fewer transient errors.
 
 ---
 
-## Quota Management System (ACTUAL IMPLEMENTATION)
+## Quota Management System
 
-### Core Architecture: Single Global Window
+### Single Global 60-Second Window
 
 **File**: [server/utils/quotaTracker.js](../../../../server/utils/quotaTracker.js)
 
-The quota system implements a **single global 60-second rolling window** tracking ALL API calls regardless of model:
+**Architecture**:
 
 ```javascript
-// Actual implementation
-const LIMIT = 20; // Hard limit per window
-const WINDOW_MS = 60 * 1000; // 60-second window
+const LIMIT = 20; // Hard ceiling per window
+const WINDOW_MS = 60 * 1000; // 60-second rolling window
 
-let callCount = 0; // Counter within window
-let windowStart = Date.now(); // Window open time
+let callCount = 0; // Calls recorded in current window
+let windowStart = Date.now(); // When current window opened
 ```
 
-**⚠️ IMPORTANT DISCREPANCY**: Documentation originally claimed model-aware quota (Flash/Pro separate). Actual implementation uses a single global quota pool.
+**Key Facts**:
 
-### Window Lifecycle
+- ✅ Single global pool (not per-model)
+- ✅ Auto-rotating (resets every 60s)
+- ✅ All service types share the same window (ebook, poetry, blog, demo)
+- ❌ NOT separate Pro/Flash quota (despite some docs suggesting this)
 
-**Auto-rotation on 60s expiration**:
+### Window Lifecycle & Auto-Rotation
 
 ```
-Timeline (example):
-T=00s   windowStart=0, callCount=0
-T=05s   recordCall() → callCount=1
-T=10s   recordCall() → callCount=2
+T=0s      windowStart = Date.now()
+T=5s      recordCall() → callCount=1
+T=15s     recordCall() → callCount=2
+T=25s     recordCall() → callCount=3
 ...
-T=55s   recordCall() → callCount=19
-T=58s   recordCall() → callCount=20 (AT LIMIT)
-T=59s   recordCall() → BLOCKED (202 Retry-Later response)
-T=60.1s recordCall() → rotateWindow() auto-fires:
-        · callCount=0
-        · windowStart=Date.now() (now T=60.1s)
-        · recordCall() proceeds (callCount=1)
+T=55s     recordCall() → callCount=19
+T=58s     recordCall() → callCount=20 (AT LIMIT)
+T=59s     recordCall() → BLOCKED (202 response)
+T=60.1s   recordCall() → AUTO-ROTATE:
+            · Detect window expired (Date.now() - windowStart > WINDOW_MS)
+            · callCount = 0
+            · windowStart = Date.now()
+            · Proceed with call
+            · recordCall() → callCount=1
 ```
 
-No explicit reset needed—automatic on next call after expiration.
+No manual reset needed—automatic on next call after 60s expiration.
 
-### Quota Status API
+### Status & Availability
 
 ```javascript
 quotaTracker.getStatus() → {
   callCount: 5,              // Current calls in window
-  limit: 20,                 // Hard ceiling
-  availableQuota: 15,        // 20 - callCount
+  limit: 20,                 // Ceiling
+  availableQuota: 15,        // Remaining (20 - 5)
   percentUsed: 25,           // (5/20)*100
-  windowResetAt: 1702778450, // Epoch ms when window expires
-  windowExpiredMs: 58000     // Time remaining in window
+  windowResetAt: <ms>,       // Epoch ms when window expires
+  windowExpiresInMs: 58000   // Time until reset
 }
-
-quotaTracker.recordCall()     // Increments counter, triggers auto-rotation if needed
 ```
 
-### Cost Calculation (ACTUAL)
+### Cost Calculation (Actual)
 
-**Function**: `calculateCostForMode(mode, metadata)` in [server/genieService.js](../../../../server/genieService.js#L684)
+**Function**: `calculateCostForMode(mode, metadata)` in [server/genieService.js](../../../../server/genieService.js)
 
 ```javascript
 function calculateCostForMode(mode, metadata = {}) {
-  switch (mode) {
-    case "ebook": {
-      const pageCount = metadata.pageCount || 10;
-      return 1 + Math.ceil(pageCount / 2); // Returns single integer
-      // Example: 10 pages = 1 + 5 = 6
-    }
-    case "poetry":
-    case "blog":
-    default:
-      return 1;
+  const { pageCount = 10 } = metadata;
+
+  if (mode === "ebook") {
+    // Cost: 1 structure call + divided chapters
+    // Example: 10 pages = 1 + ceil(10/2) = 1 + 5 = 6
+    return 1 + Math.ceil(pageCount / 2);
   }
+
+  if (mode === "poetry") {
+    return 1; // Single poem generation
+  }
+
+  if (mode === "blog") {
+    return 1; // Single blog post
+  }
+
+  return 1; // Default
 }
 ```
 
-**Key Point**: Cost is a **single number**, not `{pro, flash}` split.
+**Key Point**: Cost is a **single integer**, not split `{pro, flash}`.
 
-### Quota Check (Pre-Request)
+### Pre-Request Quota Check
 
-**Location**: [server/genieService.js](../../../../server/genieService.js#L839-L851)
+**Location**: [server/genieService.js#L839-L887](../../../../server/genieService.js)
 
 ```javascript
-// Before service dispatch
-const quota = quotaTracker.getStatus();
-const requiredCost = calculateCostForMode(mode, metadata);
+// Inside genieService.process()
+const quotaTracker = require("./utils/quotaTracker");
+const cost = calculateCostForMode(mode, payload.metadata);
+const status = quotaTracker.getStatus();
 
-if (quota.availableQuota < requiredCost) {
-  const err = new Error("Insufficient quota");
-  err.status = 202; // 202 = Retry-Later (HTTP convention)
-  err.quota = quota;
-  err.required = requiredCost;
+console.log(`[QUOTA] Checking: need ${cost}, have ${status.availableQuota}`);
+
+if (status.availableQuota < cost) {
+  // Not enough quota
+  console.log(
+    `[QUOTA] Insufficient: need ${cost}, have ${status.availableQuota}`
+  );
+
+  const err = new Error(
+    `Quota exhausted: need ${cost}, have ${status.availableQuota}`
+  );
+  err.status = 202; // Accepted, not processed
+  err.defer = true; // Flag for deferral handling
+  err.cost = cost;
+  err.availableQuota = status.availableQuota;
+  err.windowResetAtMs = status.windowResetAt;
   throw err;
 }
 
-// If we reach here: quota is guaranteed available
-const result = await serviceHandler(payload);
+// Quota check passed! Proceed to reserve and service dispatch
+console.log("[QUOTA] Check passed, proceeding with dispatch");
+```
+
+### Quota Reservation (Optional)
+
+If implemented, a `reserve(cost)` call locks quota before service execution:
+
+```javascript
+const reserveResult = quotaTracker.reserve(cost);
+
+if (!reserveResult || !reserveResult.success) {
+  // Reservation failed
+  const err = new Error(`Reservation failed: ${reserveResult.reason}`);
+  err.status = 202;
+  err.defer = true;
+  throw err;
+}
+
+// Quota guaranteed available
+const reservationId = reserveResult.reservationId;
+// Proceed with service...
 ```
 
 ---
 
 ## Orchestration Layer
 
-### genieService (Request Router)
+### genieService — Request Router & Quota Enforcer
 
 **File**: [server/genieService.js](../../../../server/genieService.js#L1)
 
-**Responsibility**:
+**Key Responsibilities**:
 
-1. Route requests to service handlers (ebook, poetry, blog)
-2. Enforce quota before service execution
-3. Calculate generation costs
-4. Support advanced generation strategies (e.g., NAT-CONT_0)
+1. Route requests by mode → service handler
+2. Calculate generation cost before service dispatch
+3. Enforce quota constraints (202 deferral on shortage)
+4. Support advanced strategies (nat-cont_0, etc.)
+5. Coordinate persistence (idempotency short-circuit)
+6. Compose final HTML response
 
-**Architecture**:
+### genieService.process() Flow
 
-```
-Incoming Request (prompt, metadata, mode)
-    │
-    ├─ Determine generation strategy
-    │  ├─ metadata.strategy === 'nat-cont_0' → use NAT-CONT_0
-    │  └─ else → use default legacy strategy
-    │
-    ├─ Calculate cost
-    │  └─ costForMode(mode, metadata) → integer
-    │
-    ├─ Check global 20-call quota
-    │  ├─ If insufficient → throw 202
-    │  └─ If sufficient → proceed
-    │
-    └─ Dispatch to service handler
-       ├─ ebookService.handle()
-       ├─ poetryService.handle()
-       └─ blogService.handle()
-```
-
-**Cost Calculation (Single Integer)**:
-
-| Mode       | Calculation           | Example            |
-| ---------- | --------------------- | ------------------ |
-| **Ebook**  | 1 + ceil(pageCount/2) | 10 pages = 6 calls |
-| **Poetry** | 1                     | Always 1 call      |
-| **Blog**   | 1                     | Always 1 call      |
-| **Demo**   | 1                     | Always 1 call      |
-
-**Quota Check Flow** ([server/genieService.js#L839-L851](../../../../server/genieService.js#L839-L851)):
+**Signature**:
 
 ```javascript
-const quota = quotaTracker.getStatus();
-const cost = calculateCostForMode(mode, metadata);
-
-if (quota.availableQuota < cost) {
-  const err = new Error("Insufficient quota");
-  err.status = 202; // Retry-Later
-  throw err;
-}
-
-// Quota guaranteed available here
-const handler = getServiceHandler(mode);
-const result = await handler(payload, classification);
-
-// Handler internally calls geminiClient, which records quota after success
-return result;
-```
-
----
-
-## Service Layer
-
-### Ebook Service - Generation Strategies
-
-**File**: [server/ebookService.js](../../../../server/ebookService.js)
-
-**Two Generation Paths**:
-
-#### Path 1: Legacy Sequential (Default)
-
-**When**: No explicit strategy specified or `metadata.strategy !== 'nat-cont_0'`
-
-```javascript
-// Sequential flow:
-callIndex=0: Generate structure (Pro)
-callIndex=1: Generate chapter 1 (Flash)
-callIndex=2: Generate chapter 2 (Flash)
-...
-callIndex=N: Generate chapter N (Flash)
-```
-
-**Process**:
-
-1. Structure generation (1 call, Pro model)
-2. Sequential chapter generation (N calls, Flash model)
-3. Compose HTML
-4. Total: 1 + N calls
-
-**Timing**: ~40-50 seconds for 8-page ebook
-
----
-
-#### Path 2: NAT-CONT_0 (Narrative Continuity) - ⭐ NEWLY DOCUMENTED
-
-**When**: `metadata.strategy === 'nat-cont_0'` (not documented before)
-
-**Purpose**: Implement tier-based call allocation with semantic routing
-
-**Overview** ([server/ebookService.js#L904-L1099](../../../../server/ebookService.js#L904-L1099)):
-
-```
-NAT-CONT_0 Strategy:
-├─ Step 1: Generate structure (callIndex=0, Pro) [Expert-tier]
-├─ Step 2: Generate opening chapter (callIndex=1, Semantic routing) [Standard]
-├─ Step 3: Generate middle chapters in batches (callIndex>=2, Flash) [Standard x3-4]
-├─ Step 4: Generate closing chapter (callIndex=final, Semantic routing) [Standard]
-└─ Step 5: Compose HTML with narrative continuity metadata
-```
-
-**Call Allocation**:
-
-```
-10-page ebook allocation:
-
-callIndex  | Tier      | Model            | Calls | Purpose
------------|-----------|------------------|-------|--------------------
-0          | Expert    | Gemini 2.5 Pro   | 1     | Structure & context
-1          | Standard  | Flash or Pro*    | 1     | Opening chapter
-2-4        | Standard  | Gemini 2.5 Flash | 2-3   | Middle chapters (batch)
-5-6        | Standard  | Gemini 2.5 Flash | 2-3   | More middle chapters (batch)
-7+         | Standard  | Flash or Pro*    | 1     | Closing chapter
-           |           |                  |-------|
-           |           | TOTAL            | 6-8   | Semantic routing*
-
-* Semantic routing allows closing chapter to use Pro if desired
-```
-
-**Key Differences from Legacy**:
-
-| Aspect    | Legacy                        | NAT-CONT_0                      |
-| --------- | ----------------------------- | ------------------------------- |
-| Structure | 1 Pro call                    | 1 Pro call                      |
-| Chapters  | Sequential (each is separate) | Batched (2-3 per request)       |
-| Routing   | Simple callIndex→model        | Semantic {tier, count} override |
-| Cost Calc | Single integer                | {pro, flash} split              |
-
-**Cost Calculation Function** ([server/genieService.js#L-](../../../../server/genieService.js)):
-
-```javascript
-function calculateCostFromRequirements(requirements) {
-  // requirements = { calls: [{tier, count}, {tier, count}, ...] }
-  let expertCalls = 0,
-    standardCalls = 0;
-
-  for (const call of requirements.calls) {
-    if (call.tier === "expert") expertCalls += 1;
-    else standardCalls += call.count || 1;
-  }
-
-  return { pro: expertCalls, flash: standardCalls };
-  // Example: { pro: 1, flash: 5 } for 10-page ebook
+async process(payload) {
+  const { mode, prompt } = payload;
+  // Returns: { out_envelope: { pages, html, metadata }, resultId }
 }
 ```
 
-**Call Requirements** ([server/genieService.js#L-](../../../../server/genieService.js)):
+**Steps** (lines 827-1050):
 
 ```javascript
-function getCallRequirements(mode, metadata) {
-  // Returns semantic description of calls needed
-
-  if (mode === "ebook") {
-    const pageCount = metadata.pageCount || 10;
-
+// 1. IDEMPOTENCY SHORT-CIRCUIT
+// If prompt was processed before, return cached result immediately
+// (Avoids consuming quota on retries/polling)
+if (ENABLE_PERSISTENCE && prompt) {
+  const persisted = await this.findPersistedByPrompt(prompt);
+  if (persisted) {
+    // Return immediately, zero quota cost
     return {
-      calls: [
-        { tier: "expert", count: 1 }, // Structure
-        { tier: "standard", count: 1 }, // Opening
-        { tier: "standard", count: Math.ceil((pageCount - 2) / 2) }, // Middle
-        { tier: "standard", count: 1 }, // Closing
-      ],
-      totalCalls: pageCount,
+      out_envelope: buildEnvelope(persisted),
+      resultId: persisted.resultId,
     };
   }
-
-  return { calls: [{ tier: "expert", count: 1 }], totalCalls: 1 };
 }
-```
 
-**Routing Map Builder** ([server/genieService.js#L-](../../../../server/genieService.js)):
+// 2. QUOTA CHECK
+const quotaTracker = require("./utils/quotaTracker");
+const cost = calculateCostForMode(mode, payload.metadata);
+const status = quotaTracker.getStatus();
 
-```javascript
-function buildRoutingMap(requirements, modelTiers = {}) {
-  // requirements = semantic description
-  // modelTiers = { expert: "pro", standard: "flash" }
-
-  const map = {};
-  let callIndex = 0;
-
-  for (const callReq of requirements.calls) {
-    const model = modelTiers[callReq.tier];
-    for (let i = 0; i < (callReq.count || 1); i++) {
-      map[callIndex++] = model;
-    }
-  }
-
-  return map;
-  // Example output: { 0: "pro", 1: "flash", 2: "flash", 3: "flash", 4: "flash", 5: "flash" }
+if (status.availableQuota < cost) {
+  // Return 202 to frontend (quota insufficient, retry later)
+  throw {
+    status: 202,
+    defer: true,
+    cost,
+    availableQuota: status.availableQuota,
+    windowResetAtMs: status.windowResetAt,
+  };
 }
-```
 
-**Invocation** ([server/ebookService.js#L95-L98](../../../../server/ebookService.js#L95-L98)):
-
-```javascript
-if (metadata.strategy === "nat-cont_0") {
-  return handleNARRATIVE_CONT_0(payload, classification);
-} else {
-  return handleLegacySequential(payload, classification);
+// 3. RESERVE QUOTA (optional, if implemented)
+const reserveResult = quotaTracker.reserve(cost);
+if (!reserveResult.success) {
+  throw { status: 202, defer: true };
 }
+
+// 4. CLASSIFY PROMPT (optional)
+if (!mode || mode === "auto") {
+  // Auto-detect task type (ebook vs. poetry vs. blog)
+  classification = await this.classifyPrompt(prompt);
+  mode = classification.medium;
+}
+
+// 5. DISPATCH TO SERVICE HANDLER
+let result;
+switch (mode) {
+  case "ebook":
+    const ebookService = require("./ebookService");
+    result = await ebookService.handle(payload, classification);
+    break;
+  case "poetry":
+  // ...
+  default:
+  // ...
+}
+
+// 6. COMPOSE HTML
+if (mode === "ebook") {
+  const html = await this.compose(result);
+  result.html = html;
+}
+
+// 7. RECORD QUOTA USAGE
+quotaTracker.recordCall(cost); // Increment counter in window
+
+// 8. PERSIST RESULT (async, non-blocking)
+if (ENABLE_PERSISTENCE) {
+  // Async persistence (doesn't block response)
+  this.persistResult(result, prompt);
+}
+
+// 9. RETURN ENVELOPE
+return {
+  out_envelope: {
+    pages: result.pages,
+    html: result.html,
+    metadata: { ...result.metadata },
+  },
+  resultId: result.resultId,
+};
 ```
 
 ---
 
-### Ebook Service
+## Ebook Service
 
-**Entry Point**: `async function handle(payload, classification)`
+### Overview: Two Strategies
 
-**Responsibility**: Generate ebook HTML from prompt
+The ebook service (`ebookService.handle()`) supports two distinct generation strategies:
 
-**Process**:
+**1. Legacy Sequential** (default)
 
-```
-Payload: { prompt, metadata: { theme, pageCount, ... } }
-    │
-    ├─ Validate input
-    │  ├─ prompt: required, non-empty
-    │  └─ pageCount: 3-20 pages
-    │
-    ├─ Call AI Service (Structure)
-    │  └─ Model: Gemini 2.5 Pro (complex reasoning)
-    │  └─ Task: Generate TOC, chapter titles, outline
-    │  └─ Duration: 10-15 seconds
-    │
-    ├─ Call AI Service (Chapters) [1..N]
-    │  └─ Model: Gemini 2.5 Flash (high-volume)
-    │  └─ Task: Generate chapter content (N = ceil(pageCount/2))
-    │  └─ Duration: 20-30 seconds total
-    │
-    ├─ Compose HTML
-    │  ├─ Build page tree from chapters
-    │  ├─ Apply theme (dark/light, colors, fonts)
-    │  └─ Serialize to string (~30-50KB)
-    │
-    └─ Return: { content, chapters, html, metadata }
-```
+- Simple, sequential chapter generation
+- Single callIndex-based routing (Pro for structure, Flash for chapters)
+- Minimal complexity
 
-**Key Code Segment** ([server/ebookService.js](../../../../server/ebookService.js#L44)):
+**2. NAT-CONT_0** (narrative continuity, when `metadata.strategy === "nat-cont_0"`)
+
+- Semantic call routing (tier-aware)
+- Batch chapter generation
+- Advanced orchestration
+
+### Strategy 1: Legacy Sequential
+
+**Entry Point**: [server/ebookService.js#L40](../../../../server/ebookService.js)
 
 ```javascript
 async function handle(payload, classification) {
   const { prompt } = payload;
-  const { theme = "dark", pageCount = 8, ... } = payload.metadata || {};
+  const { pageCount = 8, theme = "dark", strategy } = payload.metadata || {};
 
-  // Create AI service instance
-  const aiSvc = createAIService();
+  // Legacy path (when strategy !== "nat-cont_0")
+  if (strategy !== "nat-cont_0") {
+    console.log("[EBOOK] Using strategy: legacy (default sequential)");
 
-  // Conversation 1: Structure (Pro)
-  const structureCall = await aiSvc.generateContent(prompt, {
-    callIndex: 0, // Pro model
-    format: 'json',
-    task: 'Generate ebook structure with TOC'
-  });
+    // Sequential flow:
+    // Step 1: Structure generation (callIndex=0, Pro)
+    // Step 2-N: Chapter generation loop (callIndex=1..N, Flash)
+    // Step N+1: Compose HTML
 
-  // Conversation N: Chapters (Flash)
-  const chapters = [];
-  for (let i = 1; i < pageCount; i++) {
-    const chapterCall = await aiSvc.generateContent(prompt, {
-      callIndex: i, // Flash model (i > 0)
-      format: 'text',
-      task: `Generate chapter ${i} content`
-    });
-    chapters.push(chapterCall);
+    return handleLegacy(payload);
   }
 
-  // Compose HTML
-  const html = composeHTML(chapters, theme);
-
-  return {
-    content: { title, body },
-    chapters,
-    html,
-    metadata: { model: 'ebook-v1', pages: pageCount, ... }
-  };
+  // Otherwise, use NAT-CONT_0...
 }
 ```
 
-### Model Routing in AI Service
-
-**File**: [server/aiService.js](../../../../server/aiService.js#L55-L75)
-
-**Key Logic**:
+**Process** (Legacy Path):
 
 ```javascript
-async generateContent(prompt, options) {
-  const { callIndex = 0 } = options;
+// 1. STRUCTURE GENERATION (callIndex=0)
+//    Uses Gemini 2.5 Pro (primary model)
+const structurePrompt = `Create a ${pageCount}-page eBook structure for:\n"${prompt}"
+                        \n\nReturn JSON: {title, chapters, outline}`;
 
-  // Determine model based on callIndex
-  // callIndex === 0: Pro (structure)
-  // callIndex > 0: Flash (chapters)
-  const model = callIndex === 0 ? "gemini-2.5-pro" : "gemini-2.5-flash";
+let structureResp = await aiSvc.generateContentWithRotation(structurePrompt, 0);
+// callIndex=0 → triggers Pro model selection in geminiClient
+```
 
-  console.log(`[EBOOK] Using model: ${model} (callIndex=${callIndex})`);
+**Call Pattern**:
 
-  const response = await geminiClient.callGemini({
-    model,
-    prompt,
-    ...options
-  });
+```
+callIndex=0  → Structure generation (Pro) [1 call]
+callIndex=1  → Chapter 1 (Flash) [1 call]
+callIndex=2  → Chapter 2 (Flash) [1 call]
+callIndex=3  → Chapter 3 (Flash) [1 call]
+...
+callIndex=N  → Chapter N (Flash) [1 call]
+             TOTAL: 1 (Pro) + N (Flash) = N+1 calls
+```
 
-  return response;
+**Model Selection Logic** (in `geminiClient.callGemini()`):
+
+```javascript
+if (model === "gemini-2.5-pro") {
+  // Use Pro endpoint/key
+  apiUrl = process.env.GEMINI_API_URL_PRO || ...;
+  rawKey = process.env.GEMINI_API_KEY_PRO || ...;
+} else if (model === "gemini-2.5-flash") {
+  // Use Flash endpoint/key
+  apiUrl = process.env.GEMINI_API_URL_FLASH || ...;
+  rawKey = process.env.GEMINI_API_KEY_FLASH || ...;
+} else {
+  // Fallback (if model parameter not provided)
+  if (callIndex === 0) {
+    // Infer Pro for structure
+    use Pro endpoint/key
+  } else {
+    // Infer Flash for chapters
+    use Flash endpoint/key
+  }
 }
 ```
+
+**Timing**:
+
+- Structure: ~3-5 seconds
+- Each chapter: ~4-6 seconds
+- Total for 8-page ebook: ~40-50 seconds
+
+---
+
+### Strategy 2: NAT-CONT_0 (Narrative Continuity)
+
+**When Used**: `payload.metadata.strategy === "nat-cont_0"`
+
+**Purpose**: Implement semantic call routing with tier-aware quota allocation
+
+**Entry Point**: [server/ebookService.js#L904](../../../../server/ebookService.js)
+
+```javascript
+if (strategy === "nat-cont_0") {
+  console.log("[EBOOK] Using strategy: nat-cont_0");
+  const result = await handleNARRATIVE_CONT_0(payload, aiSvc);
+  return result;
+}
+```
+
+**Architecture**:
+
+```
+NAT-CONT_0 Orchestration:
+
+INPUT: prompt, pageCount=10
+
+├─ Step 1: STRUCTURE [Expert Tier, callIndex=0, Pro]
+│  └─ Generate JSON structure, table of contents
+│
+├─ Step 2: OPENING CHAPTER [Standard Tier, callIndex=1]
+│  └─ Generate narrative opening with context
+│
+├─ Step 3: MIDDLE CHAPTERS [Standard Tier, callIndex=2..N-1, Flash]
+│  └─ Generate chapters in batches (2-3 pages per call)
+│  └─ Preserve narrative continuity via context window
+│
+└─ Step 4: CLOSING CHAPTER [Standard Tier, callIndex=N, Pro or Flash]
+   └─ Generate conclusive chapter with closure
+
+OUTPUT: { pages, html, metadata }
+```
+
+**Call Allocation Example** (10-page ebook):
+
+```
+callIndex  | Tier      | Model      | Count | Pages  | Purpose
+-----------|-----------|------------|-------|--------|--------------------------------
+0          | Expert    | Pro        | 1     | TOC    | Structure & context generation
+1          | Standard  | Flash      | 1     | 1      | Opening (narrative voice)
+2          | Standard  | Flash      | 2     | 2-3    | Middle batch 1
+3          | Standard  | Flash      | 2     | 4-5    | Middle batch 2
+4          | Standard  | Flash      | 2     | 6-7    | Middle batch 3
+5          | Standard  | Pro        | 1     | 8-9    | Closing (closure)
+           |           |            |-------|--------|
+           |           | TOTAL      | 9     | 10     | NAT-CONT_0
+```
+
+**vs. Legacy**:
+
+```
+Legacy:
+callIndex=0 (Pro) → structure [1]
+callIndex=1..5 (Flash) → chapters [5]
+TOTAL: 6 calls
+
+NAT-CONT_0:
+callIndex=0 (Pro) → structure [1]
+callIndex=1..5 (Flash/Pro) → chapters [5]
+TOTAL: 6 calls (same), but with semantic routing
+```
+
+**Cost Calculation** (if split by tier):
+
+Would be `{ pro: 2, flash: 4 }` for example, but actual implementation treats as single integer.
 
 ---
 
 ## AI Service Integration
 
-### aiService (Routing & Abstraction)
-
-**File**: [server/aiService.js](../../../../server/aiService.js)
-
-**Responsibility**: Abstraction layer between orchestrator (genieService) and API client (geminiClient)
-
-**Two Implementations**:
-
-1. **MockAIService**: Deterministic responses for testing
-2. **RealAIService**: Actual Gemini API calls (production)
-
-### Model Routing Strategy
-
-**Default Routing (callIndex-based)**:
-
-```javascript
-// In aiService.js:generateContent()
-async generateContent(prompt, callIndex, options = {}) {
-  // Route based on call index
-  const model = callIndex === 0 ? "gemini-2.5-pro" : "gemini-2.5-flash";
-
-  console.log(`[EBOOK] callIndex=${callIndex} → model=${model}`);
-
-  return geminiClient.callGemini({ model, prompt, ...options });
-}
-```
-
-**Routing Logic**:
-
-- **callIndex=0** (first call) → **Pro** (complex reasoning: structure generation)
-- **callIndex>0** (subsequent calls) → **Flash** (high-volume: chapter generation)
-
-**Advanced Routing (Semantic Override)**:
-
-```javascript
-// ebookService can pass semantic routing map:
-options = {
-  routingMap: {
-    0: "gemini-2.5-pro", // Structure: use Pro
-    1: "gemini-2.5-flash", // Opening: use Flash
-    2: "gemini-2.5-flash", // Middle: use Flash
-    3: "gemini-2.5-pro", // Closing: use Pro
-  },
-};
-
-// aiService checks routingMap before defaulting to callIndex
-const model =
-  options.routingMap?.[callIndex] ||
-  (callIndex === 0 ? "gemini-2.5-pro" : "gemini-2.5-flash");
-```
-
-**Explicit Model Override**:
-
-```javascript
-// Direct model specification (highest priority)
-options.model = "gemini-2.5-pro";
-const model =
-  options.model || routingMap?.[callIndex] || defaultRouter(callIndex);
-```
-
-**Priority Order**:
-
-1. Explicit `options.model` parameter
-2. `options.routingMap[callIndex]`
-3. Default callIndex router (0→Pro, >0→Flash)
-
-### API Call Spacing: Empirical Best Practices
-
-**Discovery**: Testing reveals that rapid consecutive API calls to Gemini (even within documented quota limits) experience transient friction—rate-limit rejections, 429 errors, temporary unavailability. This affects both Pro and Flash models.
-
-**Root Cause**: Sliding window rate limits are enforced at sub-millisecond granularity; bursting calls back-to-back can trigger internal throttling mechanisms before the window constraint is checked.
-
-**Solution**: Add small delays between consecutive calls to the same model:
-
-| Model                | Recommended Spacing | Rationale                                                     |
-| -------------------- | ------------------- | ------------------------------------------------------------- |
-| **Gemini 2.5 Pro**   | ~250ms              | Pro quota (2 RPM) is scarce; tighter spacing reduces friction |
-| **Gemini 2.5 Flash** | ~100ms              | Flash quota (15 RPM) is generous; smaller spacing sufficient  |
-
-**Implementation Example**:
-
-```javascript
-// In ebookService.js or orchestrator layer:
-const SPACING_MS = {
-  "gemini-2.5-pro": 250,
-  "gemini-2.5-flash": 100,
-};
-
-let lastCallTime = 0;
-for (let i = 0; i < calls.length; i++) {
-  const call = calls[i];
-
-  // Calculate time until next call should fire
-  const timeSinceLastCall = Date.now() - lastCallTime;
-  const requiredSpacing = SPACING_MS[call.model];
-  const delayNeeded = Math.max(0, requiredSpacing - timeSinceLastCall);
-
-  if (delayNeeded > 0) {
-    await sleep(delayNeeded);
-  }
-
-  // Fire the call
-  const result = await aiService.generateContent(prompt, { callIndex: i });
-  lastCallTime = Date.now();
-}
-```
-
-**Impact on Timings**:
-
-For a 10-page ebook (1 Pro call + 5 Flash calls):
-
-```
-Without spacing:
-  Pro call: T=0-13s
-  Flash 1: T=13-15s (no delay needed, Pro timing provides natural gap)
-  Flash 2: T=15.1s → friction/429 (too fast)
-  Total: Risk of transient errors
-
-With recommended spacing (100ms for Flash):
-  Pro call: T=0-13s
-  Flash 1: T=13-15s
-  Flash 2: T=15.1s → 100ms delay → fires at T=15.2s (clean)
-  Flash 3: T=15.2-17.2s (offset by 100ms)
-  Flash 4: T=17.2-19.2s (offset by 100ms)
-  Flash 5: T=19.2-21.2s (offset by 100ms)
-  Total: ~21.2s for all Flash calls, zero transient errors
-```
-
-**Production Recommendation**: Implement spacing delays in the orchestration layer (genieService or geminiClient wrapper) to prevent downstream friction. This is a small latency cost (10-20ms per call sequence) for significant reliability improvement.
-
-### geminiClient (HTTP API Wrapper)
+### geminiClient — Low-Level API Wrapper
 
 **File**: [server/geminiClient.js](../../../../server/geminiClient.js)
 
-**Responsibility**: HTTP calls to Gemini API, quota tracking
-
-**Request Flow**:
-
-```
-callGemini({model, prompt, ...options})
-    │
-    ├─ Validate: model (required), prompt (required)
-    │
-    ├─ Rate limit check (pre-call via rateLimiter module)
-    │
-    ├─ Make HTTP POST to Gemini
-    │  └─ URL: https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent
-    │  └─ Headers: x-goog-api-key: ${GEMINI_API_KEY}
-    │  └─ Body: { contents: [{parts: [{text: prompt}]}] }
-    │
-    ├─ Handle response
-    │  ├─ 200 OK:
-    │  │  ├─ Parse response JSON
-    │  │  ├─ Extract text from candidates[0].content.parts[0]
-    │  │  ├─ Track quota: quotaTracker.recordCall(model)
-    │  │  └─ Return: { text, model, timestamp, ... }
-    │  │
-    │  └─ Errors (429, 503, 4xx, 5xx):
-    │     ├─ Do NOT track quota (failed calls don't count)
-    │     ├─ Log error with details
-    │     └─ Throw error for retry logic
-    │
-    └─ Return result or throw
-```
-
-**Key Implementation** ([server/geminiClient.js](../../../../server/geminiClient.js#L180)):
+**Signature**:
 
 ```javascript
-async callGemini(request) {
-  const { model, prompt, ...options } = request;
-
-  // Validate required fields
-  if (!model || !prompt) {
-    throw new Error("callGemini: model and prompt required");
-  }
-
-  // Make API call
-  const response = await fetch(GEMINI_API_URL, {
-    method: 'POST',
-    headers: { 'x-goog-api-key': GEMINI_API_KEY },
-    body: JSON.stringify({
-      contents: [{
-        parts: [{ text: prompt }],
-        role: "user"
-      }],
-      ...options
-    })
-  });
-
-  // Success: Track quota
-  if (response.ok) {
-    const data = await response.json();
-
-    // Record only on success
-    quotaTracker.recordCall(model);
-    console.log(`[GEMINI] Call successful: ${model}, quota tracked`);
-
-    return {
-      text: data.candidates[0].content.parts[0].text,
-      model,
-      timestamp: new Date(),
-      success: true
-    };
-  }
-
-  // Failure: Do NOT track quota
-  const errorText = await response.text();
-  console.error(`[GEMINI] Error ${response.status}: ${errorText}`);
-  throw new Error(`Gemini API error ${response.status}`);
-}
+async function callGemini({
+  prompt,
+  modality = "TEXT",         // TEXT | IMAGE | IMAGERY
+  generationConfig = {},     // Temperature, max tokens, etc.
+  imageB64 = null,          // Base64 image for IMAGE/IMAGERY modalities
+  callIndex = 0,            // Sequence number for routing
+  model = null              // "gemini-2.5-pro" | "gemini-2.5-flash"
+})
 ```
 
-**Quota Tracking Logic**:
+**Returns**:
 
-- ✅ Successful calls (200 OK) → Record in global window
-- ❌ Failed calls (429, 503, 4xx, 5xx) → Do NOT record (may retry)
-
----
-
----
-
-## Database Layer
-
-### Prisma ORM with PostgreSQL
-
-**File**: [server/db.js](../../../../server/db.js) + [server/utils/dbUtils.js](../../../../server/utils/dbUtils.js)
-
-**Status**: ✅ Operational (verified Dec 13, 2025 via `./server/scripts/db-health.sh --check=all`)
-
-**Connection**:
-
-```
-DATABASE_URL = postgresql://postgres:postgres@db:5432/aether_dev
-```
-
-**Persistence Strategy**:
-
-```
-Request → genieService → ebookService → HTML generated
-    │
-    └─→ (Optional) Save to database
-        │
-        ├─ Insert prompt record
-        │  └─ { promptId, userId, prompt, metadata, status, createdAt }
-        │
-        ├─ Insert ebook content record
-        │  └─ { contentId, promptId, title, chapters[], html, metadata }
-        │
-        └─ Return to client (HTML rendered immediately, persist async)
-```
-
-**ORM Features**:
-
-- Type-safe queries via Prisma schema
-- Migration history tracked
-- Fallback to legacy `crud` helpers during migration (if needed)
-
----
-
-## Error Handling & Resilience
-
-### Error Hierarchy
-
-```
-User Request
-    │
-    ├─ Validation Error (400)
-    │  └─ Invalid prompt, missing required fields
-    │
-    ├─ Quota Deferral (202)
-    │  └─ Insufficient quota, client should retry after reset
-    │
-    ├─ Rate Limit (429)
-    │  └─ Global express-rate-limit exceeded, retry after window
-    │
-    ├─ Gemini API Error (503)
-    │  └─ API unavailable, retry with exponential backoff
-    │
-    └─ Server Error (500)
-       └─ Unexpected exception, log and return error
-```
-
-### 202 Deferral Response
-
-**When**: Quota check fails in genieService.process()
-
-**Response**:
-
-```json
-HTTP/1.1 202 Accepted
+```javascript
 {
-  "message": "Quota exhausted; request deferred for retry",
-  "requiredFlash": 5,
-  "availableFlash": 3,
-  "requiredPro": 1,
-  "availablePro": 0,
-  "flashResetAtMs": 45000,
-  "proResetAtMs": 60000,
-  "retryAfterSeconds": 60,
-  "requestId": "req-xyz"
+  ok: true/false,
+  status: number,            // HTTP status from API
+  json: { ... },            // Parsed response
+  rawText: string,          // Raw response text
+  imageData: string         // Base64 image (if IMAGE modality)
 }
 ```
 
-**Client Action**: Retry after `retryAfterSeconds` or when `flashResetAtMs` + `proResetAtMs` have passed.
-
-### Logging
-
-**Log Levels**:
-
-- `[QUOTA]`: Quota decisions (check, track, deferral)
-- `[GEMINI]`: API calls and responses
-- `[EBOOK]`: Service-specific actions
-- `[DB]`: Database operations (optional)
-
-**Example Sequence**:
-
-```
-[QUOTA] Checking quota for ebook: flashNeeded=5, proNeeded=1
-[QUOTA] Flash available=10, Pro available=2
-[QUOTA] Quota check passed
-[EBOOK] Starting ebookService.handle()
-[GEMINI] Calling model gemini-2.5-pro (callIndex=0)
-[GEMINI] API call successful, quota tracked: gemini-2.5-pro
-[GEMINI] Calling model gemini-2.5-flash (callIndex=1)
-[GEMINI] API call successful, quota tracked: gemini-2.5-flash
-... (4 more Flash calls)
-[EBOOK] HTML composition complete
-[200] Response sent
-```
-
----
-
-## Request/Response Flow (Detailed)
-
-### Complete Ebook Generation (10-page request)
-
-```
-T=0s   [CLIENT] POST /api/ebook/generate
-       {
-         "prompt": "Write an ebook about renewable energy",
-         "metadata": { "theme": "dark", "pageCount": 10 }
-       }
-
-T+0.1s [SERVER] Parse request, validate input
-       ├─ prompt: ✓ "Write an ebook..."
-       ├─ pageCount: ✓ 10 (in range 3-20)
-       └─ theme: ✓ "dark"
-
-T+0.2s [QUOTA] Check quota
-       ├─ Cost calculation:
-       │  ├─ Flash needed: ceil(10/2) = 5 calls
-       │  └─ Pro needed: 1 call
-       ├─ Current quotas:
-       │  ├─ Flash: 12/15 available
-       │  └─ Pro: 1/2 available
-       └─ Result: ✓ Quota available, proceed
-
-T+0.3s [EBOOK] Begin service execution
-       └─ Call aiService.generateContent (structure, callIndex=0)
-
-T+0.5s [GEMINI-PRO-1] Request to Gemini 2.5 Pro
-       └─ Prompt: "Generate ebook structure with chapters..."
-
-T+12s  [GEMINI-PRO-1] Response received
-       ├─ Status: 200 OK
-       ├─ Content: TOC, chapter titles
-       └─ [QUOTA] Track: Flash=12, Pro=0 (consumed 1)
-
-T+12.1s [EBOOK] Begin chapter generation loop
-       └─ Chapters needed: 5 (5 Flash calls)
-
-T+12.2s [GEMINI-FLASH-1] Request to Gemini 2.5 Flash
-       └─ Prompt: "Generate chapter 1: Introduction..."
-
-T+14s  [GEMINI-FLASH-1] Response received
-       ├─ Status: 200 OK
-       └─ [QUOTA] Track: Flash=11, Pro=0
-
-T+14.1s [GEMINI-FLASH-2] Request to Gemini 2.5 Flash
-
-T+16s  [GEMINI-FLASH-2] Response received
-       └─ [QUOTA] Track: Flash=10, Pro=0
-
-... (repeat for Flash calls 3, 4, 5)
-
-T+46s  [EBOOK] All AI calls complete
-       └─ Chapters collected: [ch1, ch2, ch3, ch4, ch5]
-
-T+48s  [EBOOK] Compose HTML
-       ├─ Build page tree
-       ├─ Apply dark theme
-       └─ Serialize to string (~45KB)
-
-T+50s  [SERVER] Build response envelope
-       {
-         "success": true,
-         "data": {
-           "content": { "title": "Ebook: Renewable Energy", "body": "..." },
-           "chapters": [
-             { "title": "Chapter 1: Introduction", "body": "..." },
-             ...
-           ],
-           "html": "<html>...</html>",
-           "metadata": {
-             "model": "ebook-v1",
-             "pages": 10,
-             "processingTimeMs": 50000,
-             "aiModelsUsed": ["gemini-2.5-pro", "gemini-2.5-flash"]
-           }
-         }
-       }
-
-T+50.5s [TRANSMISSION] Send 45KB response over network
-        └─ Expected: 5-10 seconds (varies by connection)
-
-T+55-60s [CLIENT] Receive and parse JSON
-        ├─ JSON.parse() successful
-        ├─ Store in ebookStore
-        └─ Render preview in UI
-```
-
-**Final Quota State**: Flash=10/15, Pro=1/2
-
----
-
-## Architectural Patterns
-
-### Infrastructure Accounting as Separate Plumbing
-
-The AetherPress backend elegantly separates **content generation logic** (what services do) from **infrastructure accounting** (what middleware and interceptors do). The ebook service and future content services have **zero awareness** of quota tracking, rate-limiting, or any accounting mechanics.
-
-**What Stays in the Service Layer**:
+**Model Selection Logic** (lines 19-51):
 
 ```javascript
-async function handle(payload, classification) {
-  // 1. Generate structure
-  const structure = await aiSvc.generateContent(structurePrompt, {
-    callIndex: 0,
-  });
+// Priority: explicit model param > modality env vars > fallback
 
-  // 2. Generate chapters
-  const chapters = [];
-  for (let i = 0; i < pageCount / 2; i++) {
-    const chapter = await aiSvc.generateContent(chapterPrompt, {
-      callIndex: i + 1,
-    });
-    chapters.push(chapter);
+if (model === "gemini-2.5-pro") {
+  apiUrl = process.env.GEMINI_API_URL_PRO ||
+           process.env.GEMINI_API_URL_TEXT ||
+           process.env.GEMINI_API_URL;
+  rawKey = process.env.GEMINI_API_KEY_PRO ||
+           process.env.GEMINI_API_KEY_TEXT ||
+           process.env.GEMINI_API_KEY;
+} else if (model === "gemini-2.5-flash") {
+  apiUrl = process.env.GEMINI_API_URL_FLASH ||
+           process.env.GEMINI_API_URL_TEXT ||
+           process.env.GEMINI_API_URL;
+  rawKey = process.env.GEMINI_API_KEY_FLASH ||
+           process.env.GEMINI_API_KEY_TEXT ||
+           process.env.GEMINI_API_KEY;
+} else {
+  // Fallback: infer from modality
+  if (isText) {
+    apiUrl = process.env.GEMINI_API_URL_TEXT || ...;
+    rawKey = process.env.GEMINI_API_KEY_TEXT || ...;
   }
-
-  // 3. Compose HTML
-  const html = composeHTML(structure, chapters, theme);
-
-  // Done. Return the business result.
-  return { content, chapters, html };
+  // ... etc
 }
 ```
 
-**What Stays in the Infrastructure Layers**:
-
-| Layer                  | Concern            | Responsibility                              |
-| ---------------------- | ------------------ | ------------------------------------------- |
-| **genieService**       | Quota pre-check    | "Do we have enough budget before dispatch?" |
-| **express-rate-limit** | Velocity control   | "Has enough time passed since last call?"   |
-| **geminiClient**       | Quota post-track   | "Record this successful call"               |
-| **aiService**          | Model routing      | "Based on callIndex, which model?"          |
-| **ebookService**       | Content generation | "Generate great structured content"         |
-
-**Why This Separation Matters**:
-
-```
-Coupled Design (Service + Infrastructure):
-ebookService.handle() {
-  Check quota ❌ ← Not its job
-  Check rate-limit ❌ ← Not its job
-  Generate content ✓ ← Its job
-  Track quota ❌ ← Not its job
-  Retry on 429 ❌ ← Not its job
-}
-Result: Service bloated, hard to test, tight coupling
-
-AetherPress Design (Separation):
-ebookService.handle() {
-  Generate content ✓ ← Only its job
-}
-// Quota checked BEFORE service dispatch (genieService)
-// Rate-limiting applied DURING api call (middleware)
-// Quota tracked AFTER successful response (geminiClient)
-Result: Service focused, testable, loosely coupled
-```
-
-**Testing Impact**:
-
-With infrastructure isolation, you can test ebookService with a mock aiService, completely ignoring quota or rate-limit infrastructure:
+**Error Handling** (lines 140-200):
 
 ```javascript
-// Test: "Generate 5 chapters correctly"
-const mockAI = {
-  generateContent: () => ({ text: "Chapter content..." }),
+// Does NOT throw on API errors
+// Returns error information in response object
+
+if (!res.ok) {
+  return {
+    ok: false,
+    status: res.status,
+    json: body, // API error response
+    rawText: text,
+  };
+}
+
+// On success:
+return {
+  ok: true,
+  status: 200,
+  json: parsedJson,
+  rawText: text,
 };
-
-const result = await ebookService.handle(payload, { aiService: mockAI });
-// Assert: chapters.length === 5, html includes all content
-// No mocking of quota, rate-limit, or API infrastructure needed
 ```
 
-### Model Routing via callIndex
+**Quota Recording** (NOT in geminiClient):
 
-The backend implements implicit model selection through the `callIndex` parameter propagated from orchestrator to AI service to client:
+Quota is recorded in `genieService.process()` AFTER successful service completion, not in geminiClient itself.
 
-**Orchestration Layer** (genieService.js):
+---
+
+## Request/Response Flow
+
+### Complete Happy Path (200)
+
+```
+1. POST /api/ebook/generate
+   ├─ Body: { prompt, pageCount: 10, theme: "dark" }
+   └─ Validation: ✅ All required fields present
+
+2. index.js handler (line 2923)
+   ├─ Validate input
+   ├─ Create payload: { mode: "ebook", prompt, metadata: { pageCount, theme } }
+   ├─ Call genieService.process(payload)
+   └─ (handler waits for result)
+
+3. genieService.process()
+   ├─ Check persistence cache: ❌ Not found (new prompt)
+   ├─ Calculate cost: cost = 1 + ceil(10/2) = 6
+   ├─ Get quota status: availableQuota = 20
+   ├─ Check: 6 ≤ 20? ✅ YES
+   ├─ Reserve quota: success ✅
+   ├─ Dispatch: ebookService.handle(payload)
+   │  ├─ Determine strategy (default: legacy)
+   │  ├─ Generate structure (call 1, Pro)
+   │  ├─ Generate chapters 1-5 (calls 2-6, Flash)
+   │  ├─ Compose HTML
+   │  └─ Return: { pages, html, metadata }
+   ├─ Record quota usage: callCount += 6
+   ├─ Persist result (async, background)
+   └─ Return: { out_envelope, resultId }
+
+4. index.js handler (continued)
+   ├─ Extract envelope from result
+   ├─ Build response: { id, pages, html, metadata, actions }
+   └─ res.status(200).json(response)
+
+5. Client receives response
+   ├─ Display pages in preview
+   ├─ Offer export to PDF
+   └─ Allow editing/override
+```
+
+**Timing**: ~45-55 seconds total
+
+---
+
+### Quota Exhaustion Path (202)
+
+```
+1. genieService.process() - QUOTA CHECK
+   ├─ Calculate cost: cost = 6
+   ├─ Get status: availableQuota = 3
+   ├─ Check: 6 ≤ 3? ❌ NO
+   └─ Throw error:
+      {
+        status: 202,
+        defer: true,
+        cost: 6,
+        availableQuota: 3,
+        windowResetAtMs: 1734502520000
+      }
+
+2. index.js handler - ERROR CATCH (line 2983)
+   ├─ Catch error: err.defer && err.status === 202? ✅ YES
+   └─ Return 202 response:
+      {
+        status: 202,
+        json: {
+          message: "Quota exhausted; request deferred",
+          requiredQuota: 6,
+          availableQuota: 3,
+          windowResetAtMs: 1734502520000,
+          retryAfterSeconds: 45
+        }
+      }
+
+3. Client receives 202
+   ├─ Display: "Generation queued, will start in 45 seconds"
+   ├─ Set retry timer: setTimeout(() => retry(), 45 * 1000)
+   └─ Poll /api/ebook/status/:promptId periodically
+```
+
+**Retry Behavior**:
+
+When client retries after quota window resets:
+
+- `genieService.process()` checks persistence cache FIRST
+- If previous attempt was persisted (background task completed), returns it immediately
+- Otherwise, repeats quota check → service dispatch → persist
+
+---
+
+## Error Handling
+
+### HTTP Status Codes
+
+| Status  | Meaning             | Trigger                      | Frontend Behavior               |
+| ------- | ------------------- | ---------------------------- | ------------------------------- |
+| **200** | Success             | Generation complete          | Display ebook                   |
+| **202** | Quota Deferred      | Insufficient quota available | Retry after `retryAfterSeconds` |
+| **400** | Bad Request         | Invalid input                | Show validation error           |
+| **500** | Server Error        | Unhandled exception          | Retry or contact support        |
+| **503** | Service Unavailable | Gemini API unreachable       | Retry with exponential backoff  |
+
+### Quota Deferral (202) Details
+
+**When thrown** (line 865-873 in genieService.js):
 
 ```javascript
-const aiSvc = createAIService();
+if (status.availableQuota < cost) {
+  const err = new Error(
+    `Quota exhausted: need ${cost}, have ${status.availableQuota}`
+  );
+  err.status = 202;
+  err.defer = true; // Flag for special handling
+  err.cost = cost;
+  err.availableQuota = status.availableQuota;
+  err.windowResetAtMs = status.windowResetAt;
+  throw err;
+}
+```
 
-// Call 0: Pro (structure, reasoning-intensive)
-const structure = await aiSvc.generateContent(structurePrompt, {
-  callIndex: 0, // Signals: Use Pro model
-  task: "Generate table of contents",
-});
+**Caught in index.js** (line 2983):
 
-// Calls 1-N: Flash (content generation, high-volume)
-for (let i = 0; i < chapters.length; i++) {
-  const chapter = await aiSvc.generateContent(chapterPrompt, {
-    callIndex: i + 1, // Signals: Use Flash model (i > 0)
-    task: `Generate chapter ${i + 1} content`,
+```javascript
+if (err.defer && err.status === 202) {
+  return res.status(202).json({
+    message: "Quota exhausted; request deferred for retry",
+    requiredQuota: err.cost,
+    availableQuota: err.availableQuota,
+    windowResetAtMs: err.windowResetAtMs,
+    retryAfterSeconds: Math.ceil((err.windowResetAtMs || 60000) / 1000),
+    requestId: reqId,
   });
 }
 ```
 
-**AI Service Layer** (aiService.js):
+**Frontend Responsibility**:
 
-```javascript
-async generateContent(prompt, options = {}) {
-  const { callIndex = 0 } = options;
-
-  // Router: callIndex determines model selection
-  if (callIndex === 0) {
-    // Use Pro model for structure (reasoning-heavy, lower volume)
-    const model = 'gemini-2.5-pro';
-    return this.client.callGemini({ model, prompt });
-  } else {
-    // Use Flash model for content (high volume, lower reasoning)
-    const model = 'gemini-2.5-flash';
-    return this.client.callGemini({ model, prompt });
-  }
-}
-```
-
-**Benefits**:
-
-- Semantic clarity: `callIndex` indicates call position, which implies model
-- Separation: Service doesn't hardcode model names (easier to update)
-- Traceability: Logs show `callIndex` for debugging
-- Future-proof: Can add complexity (callIndex % 3 selects model) without changing interfaces
-
-### Scalable Service Architecture
-
-**EbookService is just the first of many media services.** The architectural pattern—completely isolating business logic from infrastructure plumbing—allows services to evolve independently and scales effortlessly:
-
-```
-Media Services Layer (All independent from accounting):
-├─ ebookService.handle()        → Generate structured ebook content
-├─ wallartService.handle()      → Generate wall art/poster content
-├─ calendarService.handle()     → Generate calendar content
-├─ poetryService.handle()       → Generate poetry/verse content
-├─ blogService.handle()         → Generate blog post content
-└─ [future services]            → All follow the same pattern
-
-Each service:
-✓ Generates content with semantic clarity
-✓ Has zero awareness of quotas or rate-limiting
-✓ Calls aiService with callIndex for implicit model selection
-✓ Is independently testable with mocked aiService
-✓ Contributes automatically to unified accounting (no integration needed)
-```
-
-**Request Flow**:
-
-```
-Request Handler → Input Validator → Classifier → genieService (quota check)
-                  (Transforms input)  (Determines  ↓
-                                       which route) [media service]
-                                                    ↓
-                                              aiService (route to model)
-                                                    ↓
-                                              geminiClient (make call + track quota)
-```
-
-**Benefits of This Pattern**:
-
-1. **Service Uniformity**: All media services follow the same contract (take payload, return content)
-2. **Reusable Infrastructure**: A single quota system (genieService + geminiClient) handles ALL services
-3. **Independent Evolution**: Add a new service (e.g., musicService) without touching infrastructure
-4. **Testing at Scale**: Test any service with mocked aiService; infrastructure never enters unit tests
-5. **Zero Coupling**: Services don't know or care about quotas, rate-limiting, models, or API calls
-
-**Real-world scaling scenario**:
-
-```javascript
-// Today: ebookService uses 5 Flash + 1 Pro per request
-const ebook = await ebookService.handle(payload);
-// Infrastructure automatically tracks: Flash -5, Pro -1
-
-// Tomorrow: Add wallartService (uses 2 Flash per request)
-const wallart = await wallartService.handle(payload);
-// Infrastructure automatically tracks: Flash -2 (separate from ebook)
-
-// Next week: Add calendarService (uses 1 Pro + 1 Flash)
-const calendar = await calendarService.handle(payload);
-// Infrastructure automatically tracks: Flash -1, Pro -1
-
-// Each service is completely unaware the others exist
-// Each service is completely unaware of infrastructure accounting
-```
+- Receive 202 response
+- Extract `retryAfterSeconds`
+- Set timer: `setTimeout(() => retry(), retryAfterSeconds * 1000)`
+- Optionally show user: "Request queued, will retry in X seconds"
 
 ---
 
 ## Performance Characteristics
 
-### Timing Breakdown (Typical 10-page Ebook)
-
-| Stage                       | Duration   | Constraint            |
-| --------------------------- | ---------- | --------------------- |
-| **Request parsing**         | <100 ms    | CPU-bound             |
-| **Quota check**             | <10 ms     | Memory-bound          |
-| **Service dispatch**        | <50 ms     | CPU-bound             |
-| **Gemini Pro (structure)**  | 10-15s     | API latency           |
-| **Gemini Flash (chapters)** | 20-30s     | API latency (5 calls) |
-| **HTML composition**        | 2-5s       | CPU-bound             |
-| **Response serialization**  | <100 ms    | CPU-bound             |
-| **Network transmission**    | 5-10s      | Network bandwidth     |
-| **Total**                   | **49-60s** | API calls dominate    |
-
-### Bottlenecks
-
-**Hard Limit**: ~60 second infrastructure timeout (Codespaces)
-
-- Backend processing: 49-50s
-- Network transmission: 5-10s
-- **Result**: Marginal, occasional timeouts
-
-**API Limits** (Free Tier):
-
-- Flash quota: 15 calls/minute = 1 call/4 seconds
-- Pro quota: 2 calls/minute = 2 calls per 60-second sliding window (NOT uniform spacing)
-- Pro is the actual bottleneck (2 RPM = max 2 calls per 60-second window)
-
-### How Pro's Quota Naturally Spaces Flash Calls
-
-The architectural pattern of separating Pro (reasoning, low volume) and Flash (generation, high volume) creates an emergent benefit: **Pro's quota constraint naturally introduces gaps that space Flash calls far enough that the rate-limiter rarely needs to trigger additional delays**.
-
-**How the Spacing Works**:
-
-Since a typical ebook needs 1 Pro call (structure) followed by multiple Flash calls (chapters), and the Pro call takes 10-15s to complete, the Flash calls naturally start after a 10-15 second gap. This natural spacing (>4 seconds between Flash calls) satisfies Flash's rate-limit requirements without requiring artificial delays.
-
-**Timeline Analysis for a 10-page Ebook** (5 Flash calls + 1 Pro call):
+### Timing Breakdown (8-page ebook)
 
 ```
-T=0s    [PRO CALL 0] Structure generation starts
-        └─ Result ready: T≈13-15s
-
-T=13-15s [QUOTA CHECK] Do we have Flash calls queued?
-        └─ Yes, 5 chapter calls waiting
-
-T=15s   [FLASH CALL 1] Chapter 1 dispatched
-        ├─ Spacing from Pro: 0-15s (generous, no rate-limit delay needed)
-        └─ Result ready: T≈17-19s
-
-T=19s   [FLASH CALL 2] Chapter 2 dispatched
-        ├─ Spacing from Call 1: 4s (well within 4s Flash quota spacing)
-        └─ Result ready: T≈21-23s
-
-T=23s   [FLASH CALL 3] Chapter 3 dispatched
-        ├─ Spacing: 4s (excellent)
-        └─ Result ready: T≈25-27s
-
-T=27s   [FLASH CALL 4] Chapter 4 dispatched
-        ├─ Spacing: 4s
-        └─ Result ready: T≈29-31s
-
-T=31s   [PRO QUOTA WINDOW] Pro becomes available again (30s passed)
-        └─ Note: We don't have a second Pro call, just marking window
-
-T=31s   [FLASH CALL 5] Chapter 5 dispatched
-        ├─ Spacing from Call 4: 4s
-        └─ Result ready: T≈33-35s
-
-T=35s   [HTML COMPOSITION] Assemble all chapters into document
-        ├─ Process chapters array
-        ├─ Apply theme and styling
-        └─ Complete: T≈38-40s
-
-T=40-50s [SERIALIZATION & TRANSMISSION]
-        ├─ JSON serialize
-        ├─ Network transmission
-        └─ Complete: T≈49-60s
+Component                  | Time      | Notes
+---------------------------|-----------|-----------------------------------
+Structure generation       | 3-5s      | Single call, Pro model
+Chapter 1-4 generation     | 16-24s    | 4 calls, Flash model, sequential
+Chapter 5-8 generation     | 12-18s    | 4 calls, Flash model, sequential
+HTML composition          | 0.5-1s    | Render to HTML
+Persistence (async)       | ~1-2s     | Background, non-blocking
+---------------------------|-----------|-----------------------------------
+TOTAL (backend)           | ~42-50s   | Typical range
+Network transmission      | ~1-5s     | Depends on client speed
+TOTAL (end-to-end)        | ~43-55s   | From request to response
 ```
 
-**Key Insight**:
-
-- Flash calls need ≥4s spacing (1 call per 4 seconds at 15 RPM)
-- Actual Flash calls occur at: T=15s, T=19s, T=23s, T=27s, T=31s
-- Spacing achieved: **4-8 seconds** (naturally satisfies quota requirement)
-- Rate-limiter delays: **None needed** (already spacing correctly)
-
-**Comparison: Without Pro's Spacing**:
-
-If we tried to call 5 Flash in rapid succession (no Pro call between):
+### Quota Impact
 
 ```
-T=0s    [FLASH 1] Dispatch
-T=1s    [FLASH 2] Dispatch (1s spacing - TOO FAST)
-        └─ Rate-limiter forces 3s delay
-T=4s    [FLASH 2 ACTUAL] Deployed (rate-limited)
-T=5s    [FLASH 3] Dispatch (1s spacing - TOO FAST)
-        └─ Rate-limiter forces 3s delay
-... (repeat pattern)
-Result: Artificial 3s delays injected 4 times = 12s wasted
+Operation                | Quota Cost | Example (10 pages)
+------------------------|-----------|-----------------------
+Structure                | 1 call    | Always 1
+Chapters (2 per call)    | 5 calls   | ceil(10/2) = 5
+------------------------|-----------|-----------------------
+Total per ebook          | 6 calls   | 1 + 5 = 6
+------------------------|-----------|-----------------------
+Daily limit (20 quota)   | 3 ebooks  | 20 / 6 = 3.33 → 3 max
 ```
 
-**With Pro's Spacing**:
+### Bottleneck Analysis
 
-```
-T=0s    [PRO] Dispatch
-T=15s   [FLASH 1] Available (no queue backup)
-        └─ Natural 15s gap = zero rate-limiter involvement
-Result: Efficient sequential processing, no artificial delays
-```
+**Primary Bottleneck**: API call latency
 
-**Architecture Benefit**:
-The separation of concerns (Pro for reasoning, Flash for generation) isn't just semantically cleaner—it's **mechanically optimized**. The Pro bottleneck (2 RPM) becomes a feature, not a liability, by naturally introducing spacing that prevents Flash rate-limiter contention.
+- Each Gemini call takes 3-6 seconds
+- Sequential calls multiply: N chapters × 5s = 5N seconds
+- 8 chapters = 40+ seconds (approaching 60s infrastructure timeout)
 
-**Mitigation Strategies** (for Scope 3+):
+**Secondary Concern**: Infrastructure timeout (60 seconds)
 
-1. Increase infrastructure timeout (Codespaces feature request)
-2. Implement response streaming (begin sending at T+5s)
-3. Move to async polling (POST generate → GET status/download)
+- Gemini processing: ~50 seconds
+- Network transmission: ~5 seconds
+- **Buffer**: ~5 seconds (DANGEROUS - very tight)
 
 ---
 
-## Implementation vs Documentation: Key Discrepancies
+## Database Layer
 
-This section documents **five critical differences** between the originally documented architecture and actual implementation discovered during code verification (December 16, 2025).
+### Persistence Models
 
-### Discrepancy #1: Quota Tracking Scope
+**Tables** (via Prisma):
 
-**Documented**: Model-aware quota system with separate windows for Flash (15 RPM) and Pro (2 RPM)
+```prisma
+// Prompts table
+model Prompt {
+  id        Int     @id @default(autoincrement())
+  text      String  @unique
+  normalized String
+  createdAt DateTime @default(now())
+  results   Result[]
+}
 
-**Actual**: Single global 20-call/60-second window tracking all API calls regardless of model type
-
-**Impact**:
-
-- No per-model quota enforcement
-- Risk of Flash starvation by Pro calls (or vice versa)
-- Simpler to implement but less granular control
-
-**Code**: [server/utils/quotaTracker.js](../../../../server/utils/quotaTracker.js) - lines 1-50
-
----
-
-### Discrepancy #2: Cost Calculation Structure
-
-**Documented**: Cost split into `{pro: X, flash: Y}` for all modes
-
-**Actual**: Cost is a single integer for legacy strategy; only `{pro, flash}` split exists for NAT-CONT_0
-
-**Impact**:
-
-- Legacy sequential path doesn't track which calls use which model
-- NAT-CONT_0 enables semantic cost tracking
-- Single-integer cost doesn't inform quota availability per model
-
-**Code**: [server/genieService.js#L684](../../../../server/genieService.js#L684)
-
----
-
-### Discrepancy #3: Undocumented NAT-CONT_0 Strategy
-
-**Documented**: Only mentions "sequential" generation strategy
-
-**Actual**: Fully implemented "NAT-CONT_0" (Narrative Continuity) strategy with:
-
-- Tier-based call allocation (Expert for structure, Standard for chapters)
-- Batch generation (2-3 chapters per Flash call vs 1 per legacy)
-- Semantic routing with `{tier, count}` requirement objects
-- `buildRoutingMap()` function for dynamic call-to-model assignment
-
-**Impact**:
-
-- Production may be using unreviewed strategy
-- Significant code path not visible in documentation
-- Performance characteristics different from legacy
-
-**Code**: [server/ebookService.js#L904-L1099](../../../../server/ebookService.js#L904-L1099)
-
----
-
-### Discrepancy #4: Model Routing Flexibility
-
-**Documented**: Simple callIndex-based routing (0→Pro, >0→Flash)
-
-**Actual**: Three-tier priority system:
-
-1. Explicit `options.model` parameter (highest)
-2. `options.routingMap[callIndex]` mapping (medium)
-3. Default callIndex router (lowest)
-
-**Impact**:
-
-- Services can override routing dynamically
-- Enables semantic strategy implementation
-- More flexible than documented
-
-**Code**: [server/aiService.js#L55-L75](../../../../server/aiService.js#L55-L75)
-
----
-
-### Discrepancy #5: AI Service Abstraction
-
-**Documented**: Simple wrapper around Gemini API
-
-**Actual**: Sophisticated abstraction layer with:
-
-- Two implementations (MockAIService for testing, RealAIService for production)
-- Lazy-loading of geminiClient (only on first real call)
-- Support for routing overrides and semantic strategies
-- Internal error recovery mechanisms
-
-**Impact**:
-
-- Testing capability not explicitly documented
-- Production flexibility greater than described
-- Integration points more complex
-
-**Code**: [server/aiService.js#L1-L150](../../../../server/aiService.js#L1-L150)
-
----
-
-## Summary: Three-Layer Backend Architecture
-
-The AetherPress backend implements a request processing pipeline:
-
-```
-┌─────────────────────────────────────────────────────┐
-│ HTTP Layer (POST /api/ebook/generate)               │
-│ - Validate request schema                           │
-│ - Generate request ID for tracing                   │
-└──────────────────┬──────────────────────────────────┘
-                   │
-┌──────────────────┴──────────────────────────────────┐
-│ Orchestration Layer (genieService)                  │
-│ - Calculate cost (single integer)                   │
-│ - Check global 20-call quota                        │
-│ - Route to appropriate service handler              │
-│ - Return 202 if quota insufficient                  │
-└──────────────────┬──────────────────────────────────┘
-                   │
-┌──────────────────┴──────────────────────────────────┐
-│ Service Layer (ebookService, poetryService, etc.)   │
-│ - Execute business logic                            │
-│ - Call aiService with callIndex/routing info        │
-│ - Build result object                               │
-│ - Quota guaranteed available from orchestrator      │
-└──────────────────┬──────────────────────────────────┘
-                   │
-┌──────────────────┴──────────────────────────────────┐
-│ AI Integration Layer (aiService → geminiClient)     │
-│ - Select model (Pro vs Flash via routing)           │
-│ - Make HTTP request to Gemini API                   │
-│ - Track successful calls in global quota            │
-│ - Return generated content                          │
-└──────────────────┬──────────────────────────────────┘
-                   │
-┌──────────────────┴──────────────────────────────────┐
-│ Persistence Layer (Prisma ORM)                      │
-│ - Async database operations                         │
-│ - Store prompts and generated content               │
-│ - Optional: not blocking main response              │
-└─────────────────────────────────────────────────────┘
+// Results table (persisted AI output)
+model Result {
+  id        Int     @id @default(autoincrement())
+  promptId  Int
+  prompt    Prompt  @relation(fields: [promptId], references: [id])
+  title     String
+  pages     Json    // Array of pages: [{title, body, layout}, ...]
+  html      String?
+  metadata  Json    // {model, theme, pageCount, ...}
+  createdAt DateTime @default(now())
+}
 ```
 
-**Quota Architecture** (ACTUAL):
+### Persistence Flow
 
-- Single global window: 60 seconds, 20 calls max
-- Tracks all models together (Flash + Pro mixed)
-- Cost pre-check before service dispatch
-- Window auto-rotates on expiration
+**In genieService.process()** (line 838-851):
 
-**Routing Architecture** (ACTUAL):
+```javascript
+// IDEMPOTENCY: Check cache on every request
+if (ENABLE_PERSISTENCE && prompt) {
+  const persisted = await this.findPersistedByPrompt(prompt);
+  if (persisted) {
+    // Return cached result immediately (zero quota cost!)
+    return {
+      out_envelope: buildEnvelope(persisted),
+      resultId: persisted.resultId,
+    };
+  }
+}
 
-- Default: callIndex 0→Pro, >0→Flash
-- Override: `options.routingMap[callIndex]` per-call mapping
-- Override: `options.model` explicit model parameter
-- Strategy: NAT-CONT_0 uses tier-based semantic routing
+// ... later, after service dispatch succeeds ...
 
-**Timing Characteristics**:
+// ASYNC PERSISTENCE: Save result for future retries
+if (ENABLE_PERSISTENCE) {
+  // Non-blocking: fire-and-forget
+  this.persistResult(result, prompt);
+}
+```
 
-- Structure + chapters: 40-50 seconds
-- Infrastructure timeout: ~60 seconds (Codespaces limit)
-- Safety margin: 10-20 seconds
-- Risk: Any variance extends past infrastructure limit
+**Key Behavior**:
+
+- ✅ Idempotency: Repeated requests for same prompt return cached result
+- ✅ No double-charging: Cache lookup happens BEFORE quota check
+- ✅ Async save: Result persisted in background, doesn't block response
+- ✅ Fallback detection: Supports both Prisma AND legacy sqlite (migration-safe)
 
 ---
 
-## Reference Documents
+## Actual vs. Documented Discrepancies
 
-- **Historical Reference**: [BACKEND_ARCHITECTURE_REF0.md](BACKEND_ARCHITECTURE_REF0.md) - Original aspirational design
-- **System Overview**: [ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md)
-- **Frontend Integration**: [FRONTEND_ARCHITECTURE.md](FRONTEND_ARCHITECTURE.md)
-- **API Contracts**: [CLIENT_SERVER_INTEGRATION.md](CLIENT_SERVER_INTEGRATION.md)
-- **Documentation Project**: [ARCHITECTURE_DOCUMENTATION_PROPOSAL.md](ARCHITECTURE_DOCUMENTATION_PROPOSAL.md)
+### What's Different from Earlier Docs
+
+| Aspect                | Earlier Doc                  | Actual Implementation         | Status         |
+| --------------------- | ---------------------------- | ----------------------------- | -------------- |
+| **Quota Model**       | "Separate Pro/Flash windows" | Single global 20-call window  | ⚠️ CORRECTED   |
+| **Cost Calculation**  | `{pro: N, flash: N}`         | Single integer (cost)         | ⚠️ SIMPLIFIED  |
+| **NAT-CONT_0 Status** | "Planned"                    | Implemented & selectable      | ✅ COMPLETE    |
+| **Quota Deferral**    | "Optional"                   | Required (202 responses)      | ✅ ACTIVE      |
+| **Persistence**       | "Mentioned"                  | Full idempotency + async save | ✅ IMPLEMENTED |
+| **Spacing Caveat**    | Documented for Pro           | Applies to both Pro & Flash   | ✅ CLARIFIED   |
+
+### Why the Discrepancies?
+
+1. **Evolution**: Code evolved faster than documentation
+2. **Pragmatism**: Single global quota simpler than per-model tracking
+3. **NAT-CONT_0**: Later addition, not yet in early architectural docs
+4. **Spacing Finding**: Empirical discovery during development
 
 ---
 
-**Last Updated**: December 16, 2025 @ 8:50 AM  
-**Verification Method**: Direct code inspection of server/ directory  
-**Status**: ✅ Implementation-verified (reverse-engineered from production code)
+## Future Adjustments Needed
+
+Based on this implementation review, consider:
+
+1. **Async Job Queue**: Current architecture blocks on 50s generation
+
+   - Could return 202 + jobId immediately, notify client when ready
+   - Requires background job processor (Redis, RabbitMQ, or simple queue)
+
+2. **Progressive Streaming**: Send partial results (pages) as they complete
+
+   - Server-Sent Events (SSE) or WebSocket for real-time updates
+   - Requires refactoring service layer to emit progress events
+
+3. **Separated Quota Pools**: Restore Pro/Flash split for better utilization
+
+   - Requires schema change to quotaTracker
+   - Benefits: Can generate more complex ebooks with Pro tier
+
+4. **Caching Optimization**: Persist intermediate results (structure, chapters)
+
+   - Allows resuming failed ebook generation
+   - Reduces re-computation on retries
+
+5. **Scaling Model Rotation**: Add adaptive model selection
+   - Choose Flash first for cost savings, fall back to Pro only when needed
+   - Requires cost-aware orchestration logic
+
+---
+
+## Summary
+
+The AetherPress backend is fundamentally sound:
+
+✅ **Solid quota protection**: Single global window prevents API abuse
+✅ **Smart caching**: Idempotency avoids double-charging on retries
+✅ **Flexible routing**: NAT-CONT_0 strategy ready for advanced scenarios
+✅ **Graceful degradation**: 202 responses defer requests cleanly
+✅ **Detailed logging**: Full trace via requestId and service logs
+
+⚠️ **Key Challenges**:
+
+- Infrastructure timeout (60s) vs. generation time (50s) leaves thin margin
+- Current sequential approach doesn't scale beyond ~10-15 pages
+- No background job queue means frontend must poll for completion
+
+These are architectural, not implementation issues—resolvable with feature additions.
