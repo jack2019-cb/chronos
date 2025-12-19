@@ -1,126 +1,194 @@
-````markdown
 # Helpers & Assistants Framework: Freeing the Orchestrator
 
-**Date**: December 19, 2025 @ 6:15PM
+**Date**: December 19, 2025 @ 10:50AM (UPDATED)
 **Branch**: `feat/ebook-nat-cont`
 
-**Status**: DRAFT (Foundational Concept)
-**Purpose**: Define the general framework for helpers/assistants that genieService delegates to
+**Status**: DRAFT (Foundational Concept - Updated)
+**Purpose**: Define the general framework for helpers/assistants that genieService delegates to, with distinction between per-request helpers and task-assigned utilities
 **Related Documents**:
 
 - [PART_B_ORCHESTRATOR_PATTERN_DRAFT.md](PART_B_ORCHESTRATOR_PATTERN_DRAFT.md) - Waiter pattern
 - [SERVICE_MACHINE_PATTERN.md](SERVICE_MACHINE_PATTERN.md) - Service autonomy
 - [PART_A_AND_PART_B_CONCEPTUAL_FRAMEWORK.md](PART_A_AND_PART_B_CONCEPTUAL_FRAMEWORK.md) - Async architecture
+- [HELPERS_AND_ASSISTANTS_FRAMEWORK_REF0.md](HELPERS_AND_ASSISTANTS_FRAMEWORK_REF0.md) - Historical reference (original version)
 
 ---
 
 ## Table of Contents
 
 1. [Executive Summary](#executive-summary)
-2. [The Core Idea: Delegation vs. Monolithic](#the-core-idea-delegation-vs-monolithic)
-3. [What Is a Helper/Assistant?](#what-is-a-helperassistant)
-4. [The Waiter Metaphor (Applied to Helpers)](#the-waiter-metaphor-applied-to-helpers)
-5. [Simple Example: The Timing-Resolver Helper](#simple-example-the-timing-resolver-helper)
-6. [Simple Example: The Smart-Polling Helper](#simple-example-the-smart-polling-helper)
-7. [The Helper Ecosystem (General View)](#the-helper-ecosystem-general-view)
-8. [How This Frees genieService](#how-this-frees-genieservice)
-9. [The Contract Between genieService and Helpers](#the-contract-between-genieservice-and-helpers)
-10. [Benefits of the Helpers Framework](#benefits-of-the-helpers-framework)
-11. [Status: Foundational Concept](#status-foundational-concept)
-12. [Summary: The Vision](#summary-the-vision)
+2. [Helpers vs. Utilities: Key Distinction](#helpers-vs-utilities-key-distinction)
+3. [The Core Idea: Delegation vs. Monolithic](#the-core-idea-delegation-vs-monolithic)
+4. [What Is a Helper/Assistant?](#what-is-a-helperassistant)
+5. [What Is a Utility (Task-Assigned Service)?](#what-is-a-utility-task-assigned-service)
+6. [The Waiter Metaphor (Applied to Helpers)](#the-waiter-metaphor-applied-to-helpers)
+7. [Simple Example: The Timing-Resolver Helper](#simple-example-the-timing-resolver-helper)
+8. [Simple Example: The smartPoller Utility (Task-Assigned)](#simple-example-the-smartpoller-utility-task-assigned)
+9. [The Helper Ecosystem (General View)](#the-helper-ecosystem-general-view)
+10. [How This Frees genieService](#how-this-frees-genieservice)
+11. [The Contract Between genieService, Helpers, and Utilities](#the-contract-between-genieservice-helpers-and-utilities)
+12. [Benefits of the Helpers & Utilities Framework](#benefits-of-the-helpers--utilities-framework)
+13. [Status: Foundational Concept](#status-foundational-concept)
+14. [Summary: The Vision](#summary-the-vision)
 
 ---
 
-## Visual: Backend Architecture (PART-A + PART-B + Helpers)
+## Executive Summary
+
+**genieService should be a PURE ORCHESTRATOR** that:
+
+- ✅ Routes requests to services
+- ✅ Coordinates execution flow via helpers
+- ✅ Assigns tasks to utilities (like aiService, smartPoller)
+- ✅ Provides clean interfaces to services
+- ✅ Oversees the entire domain
+
+**Helpers** are **per-request specialists** that:
+
+- ✅ Solve one specific computation/validation problem
+- ✅ Operate independently during job execution
+- ✅ Have clear, simple contracts (pure logic)
+- ✅ Are tested in isolation
+- ✅ Die when job completes
+
+**Utilities** are **task-assigned services** that:
+
+- ✅ Accept task assignments from genieService
+- ✅ Operate across multiple requests (long-lived)
+- ✅ Maintain state for assigned tasks
+- ✅ Enrich assignments with actualized activity data
+- ✅ Decide what to surface to clients
+- ✅ Like aiService, persistence, logger (shared infrastructure)
+
+**Result**: genieService is **free to think big** while helpers handle per-job logic and utilities handle shared responsibilities.
+
+---
+
+## Helpers vs. Utilities: Key Distinction
+
+### Helpers (Per-Request Specialists)
+
+| Aspect             | Detail                                                    |
+| ------------------ | --------------------------------------------------------- |
+| **Creation**       | Fresh instance for each orchestrator                      |
+| **Lifecycle**      | Duration of one generation job (tied to resultId)         |
+| **Responsibility** | Pure computation/logic for THIS job                       |
+| **Examples**       | timingResolver, manifestProcessor, progressTracker        |
+| **Access**         | genieService → Orchestrator → Called per-request          |
+| **State**          | Accumulates during job execution, discarded on completion |
+| **Scope**          | Single job only                                           |
+
+### Utilities (Task-Assigned Services)
+
+| Aspect             | Detail                                                          |
+| ------------------ | --------------------------------------------------------------- |
+| **Creation**       | Once at application startup (singleton-like)                    |
+| **Lifecycle**      | Application lifecycle                                           |
+| **Responsibility** | Assigned specific tasks by genieService                         |
+| **Examples**       | aiService, smartPoller, persistence, logger, config             |
+| **Access**         | Direct injection; genieService assigns tasks                    |
+| **State**          | Long-lived; tracks multiple concurrent tasks (one per resultId) |
+| **Scope**          | App-wide; handles all jobs                                      |
+
+### The Task Assignment Pattern
+
+**Key Concept**: genieService **assigns tasks to utilities**, like delegating work in an organization.
+
+```javascript
+// Helper computes for THIS job
+const timing = timingResolver.compute(manifest);
+// Returns: { eta: 23s, schedule: [...] }
+
+// genieService ASSIGNS TASK to utility for THIS job's resultId
+smartPoller.assignTask(resultId, {
+  eta: timing.totalEta,
+  totalCalls: manifest.totalRequests,
+});
+
+// Utility now owns polling/status responsibility
+// genieService periodically enriches it with actualized data
+smartPoller.updateProgress(resultId, {
+  currentCall: 2,
+  completedCalls: 1,
+  nextEstimatedCompletion: Date.now() + 17000,
+  errors: [],
+});
+
+// Client polls: GET /api/status/:resultId
+// smartPoller responds (decides what to surface)
+// Returns: { status: "in-progress", calls_completed: 1, calls_total: 4, eta: 23, ... }
+```
+
+---
+
+## Visual: Backend Architecture (PART-A + PART-B + Helpers + Utilities)
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│                          FRONTEND REQUEST                             │
+│                          FRONTEND REQUEST                              │
 │                                                                        │
-│  POST /api/ebook/generate                                             │
-│  { prompt, theme, pageCount }                                         │
+│  POST /api/ebook/generate                                              │
+│  { prompt, theme, pageCount }                                          │
 └────────────────────────────┬───────────────────────────────────────────┘
                              │
                              ↓
 ┌────────────────────────────────────────────────────────────────────────┐
-│                      PART-A: DUMB PLUMBING                            │
-│                    (index.js HTTP Handler)                            │
+│                      PART-A: DUMB PLUMBING                             │
+│                    (index.js HTTP Handler)                             │
 ├────────────────────────────────────────────────────────────────────────┤
 │                                                                        │
-│  ✓ Accept request                                                    │
-│  ✓ Generate resultId (UUID)                                          │
-│  ✓ Return IMMEDIATELY with { resultId, status: "queued" }           │
-│  ✓ Hand off async to PART-B (NO WAITING)                             │
+│  ✓ Accept request                                                      │
+│  ✓ Generate resultId (UUID)                                            │
+│  ✓ Return IMMEDIATELY with { resultId, eta: 23, status: "queued" }     │
+│  ✓ Hand off async to PART-B (NO WAITING)                               │
 │                                                                        │
-│  Solves: 🔓 BREAKS SYNCHRONOUS COUPLING                              │
-│          └─ Client no longer blocks 50+ seconds                      │
-│          └─ No infrastructure timeout hit                            │
+│  Solves: 🔓 BREAKS SYNCHRONOUS COUPLING                                │
+│          └─ Client no longer blocks 50+ seconds                        │
+│          └─ No infrastructure timeout hit                              │
 │                                                                        │
 └────────────────────────────┬───────────────────────────────────────────┘
                              │
-                    (HTTP Response: 202 Accepted)
-                    { resultId, status: "queued" }
+                (HTTP Response: 202 Accepted)
+        { resultId, eta: 23, status: "queued" }
                              │
               ┌──────────────┼──────────────┐
               ↓              ↓              ↓
-        FRONTEND       PART-B         Job Status
-        (Polling)      (Async)        (In Memory)
-                       │
-                       ↓
+          FRONTEND        PART-B       Job Status
+         (Smart Polling) (Async)       (In smartPoller)
+                             │
+                             ↓
 ┌────────────────────────────────────────────────────────────────────────┐
-│              PART-B: SMART ORCHESTRATION (genieService)               │
-│                     (Waiter Pattern)                                  │
+│              PART-B: SMART ORCHESTRATION (genieService)                │
+│                       (Waiter Pattern)                                   │
 ├────────────────────────────────────────────────────────────────────────┤
 │                                                                        │
-│  SERVICE ROUTING:                                                    │
-│  ┌──────────────────────────────────────────────────────────────┐   │
-│  │ Route by mode: if "ebook" → ebookService.handle()           │   │
-│  │ Pass orchestrator interface (NOT aiService, quotaTracker)    │   │
-│  └──────────────────────────────────────────────────────────────┘   │
-│                             │                                        │
-│                             ↓                                        │
-│  HELPERS COORDINATE EXECUTION:                                      │
-│                                                                      │
-│  ┌────────────────────────────────────────────────────────────┐   │
-│  │ Service sends manifest on first call:                      │   │
-│  │ { totalRequests: 4, sequence: [{tier, ...}, ...] }         │   │
-│  └────────────────────────────────────────────────────────────┘   │
-│                             │                                        │
-│                             ↓ (Helpers take over)                   │
-│                                                                      │
-│  ┌─ HELPERS ECOSYSTEM (Pure Logic) ─────────────────────────────┐  │
-│  │                                                              │  │
-│  │  manifest-processor: Validate & parse manifest              │  │
-│  │      ↓                                                       │  │
-│  │                                                              │  │
-│  │  timing-resolver: Manifest → ETA + Schedule                │  │
-│  │      │ INPUT:  manifest, config                             │  │
-│  │      │ OUTPUT: { eta: 23s, schedule: [...] }                │  │
-│  │      │                                                       │  │
-│  │      │ Solves: 🚫 RAPID-FIRE (429 errors)                   │  │
-│  │      │         └─ Enforces spacing (Pro 250ms, Flash 100ms) │  │
-│  │      │         🚫 QUOTA EXHAUSTION                          │  │
-│  │      │         └─ Timing-based quota (no state tracking)     │  │
-│  │      │         ✓ ACCURATE ETA                                │  │
-│  │      │         └─ Client knows wait time upfront             │      │
-│  │      ↓                                                       │      │
+│  SERVICE ROUTING & ORCHESTRATION:                                      │
+│  ┌──────────────────────────────────────────────────────────────┐      │
+│  │ 1. Create fresh orchestrator with HELPERS                    │      │
+│  │ 2. Assign task to UTILITIES                                  │      │
+│  │ 3. Route to service: if "ebook" → ebookService.handle()      │      │
+│  │ 4. Pass orchestrator interface to service                    │      │
+│  │ 5. As service executes, periodically update utilities        │      │
+│  └──────────────────────────────────────────────────────────────┘      │
+│                             │                                          │
+│                             ↓                                          │
+│  ┌─ HELPERS ECOSYSTEM (Per-Request, Pure Logic) ────────────────┐      │
 │  │                                                              │      │
+│  │  manifest-processor: Validate & parse manifest               │      │
+│  │      ↓                                                       │      │
+│  │  timing-resolver: Manifest → ETA + Schedule                  │      │
+│  │      ↓                                                       │      │
 │  │  fifo-scheduler: Build execution slots with spacing          │      │
 │  │      ↓                                                       │      │
-│  │                                                              │      │
 │  │  statusManager: Initialize & track progress                  │      │
 │  │      ↓                                                       │      │
-│  │                                                              │      │
 │  │  toolSelector: Pick which AI tool to use                     │      │
 │  │      ↓                                                       │      │
-│  │                                                              │      │
 │  │  errorReporter: Correlate error details                      │      │
 │  │      ↓                                                       │      │
-│  │                                                              │      │
 │  │  progressTracker: Calculate completion %                     │      │
 │  │      ↓                                                       │      │
-│  │                                                              │      │
-│  │  (All pure logic, independently testable)                    │      │
+│  │  (All pure logic, fresh per job, independently testable)     │      │
 │  │                                                              │      │
 │  └──────────────────────────────────────────────────────────────┘      │
 │                                                                        │
@@ -132,17 +200,28 @@
 │  │   2. Select tool (via toolSelector)                          │      │
 │  │   3. Execute: tool.generate(prompt, {tier})                  │      │
 │  │   4. Update status (via statusManager)                       │      │
+│  │   5. UPDATE UTILITY: smartPoller.updateProgress(resultId)    │      │
+│  │      (Enriches utility with actualized activity)             │      │
 │  │                                                              │      │
 │  │ Total execution time: ~24s (vs 49-50s current)               │      │
 │  │ Well within 60s infrastructure limit                         │      │
 │  └──────────────────────────────────────────────────────────────┘      │
 │                                                                        │
-│  UTILITIES (Side Effects):                                             │
+│  UTILITIES (Long-Lived, Task-Assigned):                                │
 │  ┌──────────────────────────────────────────────────────────────┐      │
-│  │ • aiService: Actual Gemini API calls                         │      │
-│  │ • persistence: Database operations                           │      │
-│  │ • logger: Logging                                            │      │
-│  │ • config: Shared configuration                               │      │
+│  │ BACK-END UTILITIES:                                          │      │
+│  │  • aiService: Assigned "Generate content" tasks              │      │
+│  │  • persistence: Assigned "Store/retrieve data" tasks         │      │
+│  │  • logger: Shared logging across all tasks                   │      │
+│  │  • config: Shared configuration                              │      │
+│  │                                                              │      │
+│  │ POLLING/STATUS UTILITY:                                      │      │
+│  │  • smartPoller: Assigned "Manage polling/status for resultId"        │
+│  │    - Receives task: assignTask(resultId, {eta, totalCalls})  │      │
+│  │    - Receives updates: updateProgress(resultId, activity)    │      │
+│  │    - Enriches with actualized data from execution            │      │
+│  │    - Decides what to forward to client (filters/aggregates)  │      │
+│  │                                                              │      │
 │  └──────────────────────────────────────────────────────────────┘      │
 │                                                                        │
 └────────────────────────────┬───────────────────────────────────────────┘
@@ -152,32 +231,31 @@
                              ↓
 ┌────────────────────────────────────────────────────────────────────────┐
 │                  FRONTEND: SMART POLLING                               │
-│                (Replaces dumb polling)                                 │
+│                  (Uses smartPoller via HTTP)                           │
 ├────────────────────────────────────────────────────────────────────────┤
 │                                                                        │
-│  smart-polling-helper: Calculate intelligent polling strategy          │
-│      INPUT:  eta (from PART-A response)                                │
-│      OUTPUT: { wait_ms, poll_interval_ms, timeout_ms, messages }       │
-│                                                                        │
-│  Solves: 🔓 DUMB POLLING                                               │
-│          └─ Wait ~80% of ETA before polling                            │
-│          └─ No wasted polls early in job                               │
-│          └─ Poll only when job can possibly be done                    │
-│          └─ Exponential backoff with max interval                      │
-│          └─ Show progress: "2 of 4 calls complete (est. 15s remain)"   │
-│                                                                        │
-│  Polling flow:                                                         │
-│  1. Wait ~18s (80% of 23s ETA)                                         │
-│  2. Poll /api/status/:resultId every 2s                                │
-│  3. Display progress updates                                           │
-│  4. Timeout if not done in ~53s total                                  │
-│  5. Display result when complete                                       │
+│  Receives ETA from PART-A (202 response)                               │
+│      ↓                                                                 │
+│  Calculates intelligent polling strategy:                              │
+│  • Wait ~80% of ETA before starting polls                              │
+│  • Poll every 2s after that                                            │
+│  • Timeout if not done in ~53s total                                   │
+│      ↓                                                                 │
+│  Polls: GET /api/status/:resultId                                      │
+│      ↓                                                                 │
+│  smartPoller responds with enriched status:                            │
+│  { status: "in-progress", calls_completed: 1, calls_total: 4,          │
+│    eta: 23, estimated_remaining: 17, progress_percent: 25 }            │
+│      ↓                                                                 │
+│  Display progress updates to user                                      │
+│      ↓                                                                 │
+│  On completion, display result                                         │
 │                                                                        │
 └────────────────────────────┬───────────────────────────────────────────┘
                              │
                              ↓
                     ✅ RESULT TO USER
-                    (HTML, PDF, etc.)
+                     (HTML, PDF, etc.)
 
 
 ═══════════════════════════════════════════════════════════════════════════
@@ -188,58 +266,27 @@ CRITICAL PROBLEMS SOLVED:
      ✅ SOLUTION: PART-A breaks sync coupling
         • Client no longer blocks waiting for response
         • PART-B executes async in background (~24s total)
-        • No infrastructure timeout hit
+        • smartPoller manages status (no client blocking)
 
   ❌ PROBLEM 2: Rapid-Fire Errors (429 Too Many Requests)
      ✅ SOLUTION: timing-resolver enforces spacing
         • Pro calls: 250ms apart (respects 2 RPM limit)
         • Flash calls: 100ms apart (respects 15 RPM limit)
         • FIFO queue naturally orders calls
-        • No bursts possible → no 429 errors
 
   ❌ PROBLEM 3: Quota Exhaustion
      ✅ SOLUTION: Quota is timing-based, not state-based
         • No quotaTracker state tracking needed
         • Spacing automatically respects quota constraints
-        • Deterministic and fair (FIFO order)
-        • All calls succeed within quota
 
-═══════════════════════════════════════════════════════════════════════════
-
-KEY INNOVATION: HELPERS ENABLE SIMPLICITY
-
-  Before (Monolithic genieService):
-    500+ lines | Validation, quota, timing, scheduling, execution,
-    error handling, status tracking all mixed together
-
-  After (Orchestrator + Helpers):
-    20 lines | Route → Create orchestrator with helpers → Execute service
-    300+ lines | Each helper owns one concern, tested independently
+  ❌ PROBLEM 4: Dumb Polling (client polls before job ready)
+     ✅ SOLUTION: smartPoller enriches with actualized data
+        • genieService provides real progress to smartPoller
+        • Client gets intelligent polling strategy + real status
+        • Visibility into job progress without blocking
 
 ═══════════════════════════════════════════════════════════════════════════
 ```
-
----
-
-## Executive Summary
-
-**genieService should be a PURE ORCHESTRATOR** that:
-
-- ✅ Routes requests to services
-- ✅ Coordinates execution flow
-- ✅ Provides clean interfaces to services
-- ✅ Delegates ALL menial work to helpers
-- ✅ Oversees the entire domain
-
-**Helpers/Assistants are SPECIALISTS** that:
-
-- ✅ Solve one specific problem
-- ✅ Operate independently
-- ✅ Have clear, simple contracts
-- ✅ Are tested in isolation
-- ✅ Can be evolved without touching genieService
-
-**Result**: genieService is **free to think big** while helpers handle the details.
 
 ---
 
@@ -251,53 +298,22 @@ KEY INNOVATION: HELPERS ENABLE SIMPLICITY
 // MONOLITHIC GENIESERVICE (current anti-pattern)
 async process(payload) {
   // Validation
-  if (!payload.prompt) throw new Error(...);
-
   // Persistence check
-  const cached = await db.findByPrompt(payload.prompt);
-  if (cached) return cached;
-
   // Quota checking
-  const quota = quotaTracker.getStatus();
-  if (quota.availableQuota < cost) throw 202;
-  quotaTracker.reserve(cost);
-
   // Service routing
-  let result;
-  if (mode === "ebook") {
-    result = await ebookService.handle(payload, orchestratorProxy);
-  }
-
   // Timing computation
-  const eta = (payload.pageCount * 6) + (Math.ceil(payload.pageCount/2) * 5);
-
   // Scheduling
-  const schedule = [];
-  let time = 0;
-  for (const call of manifest) {
-    schedule.push({ callIndex, startTime: time, duration: latency });
-    time += latency + spacing;
-  }
-
   // Execution management
-  for (const call of schedule) {
-    await waitUntil(call.startTime);
-    const result = await aiService.generate(...);
-    quotaTracker.record(1);
-  }
-
   // Status tracking
-  statusMap.set(resultId, { status: "complete", result });
-
   // Error handling + correlation
-  // ... lots of complex logic
-
   // Response building
-  return buildResponse(result);
+
+  // genieService is EVERYTHING
+  // Hard to test, hard to change, hard to understand
 }
 ```
 
-**Problem**: genieService is doing EVERYTHING. It's a monolith. Hard to test, hard to change, hard to understand.
+**Problem**: genieService is doing EVERYTHING. It's a monolith.
 
 ### What We're Moving Toward
 
@@ -306,35 +322,31 @@ async process(payload) {
 async process(payload) {
   const { resultId, mode, prompt, metadata } = payload;
 
-  // Create orchestrator with helpers
+  // Create fresh orchestrator with HELPERS
   const orchestrator = new Orchestrator(resultId, {
-    // Helpers (specialists)
-    manifestProcessor,      // Parse manifests
-    timingResolver,        // Compute timing
-    fifoScheduler,         // Build schedules
-    toolSelector,          // Pick tools
-    statusManager,         // Track status
-    errorReporter,         // Report errors
-    progressTracker,       // Track progress
-    smartPollingHelper,    // Frontend polling
+    manifestProcessor, timingResolver, fifoScheduler,
+    toolSelector, statusManager, errorReporter, progressTracker
+  });
 
-    // Utilities (side effects)
-    aiService,
-    persistence,
+  // ASSIGN TASK to utility
+  smartPoller.assignTask(resultId, { /* timing from helpers */ });
+
+  // Route to service with clean interface
+  const service = this.selectService(mode);
+
+  // Service executes; genieService enriches smartPoller with progress
+  const result = await service.handle(payload, {
+    orchestrator,
+    onProgress: (activity) => smartPoller.updateProgress(resultId, activity),
     logger,
     config
   });
 
-  // Route to service with clean interface
-  const service = this.selectService(mode);
-  const result = await service.handle(payload, { orchestrator, logger, config });
-
-  // Done. All helpers handled the details.
   return result;
 }
 ```
 
-**Benefit**: genieService is now just an orchestrator. All specialists are called through clean contracts.
+**Benefit**: genieService is clean orchestration. Helpers do computation. Utilities handle shared responsibilities.
 
 ---
 
@@ -342,103 +354,148 @@ async process(payload) {
 
 ### Definition
 
-A **helper** is a **specialized, independent component** that:
+A **helper** is a **per-request, specialized, independent component** that:
 
 1. **Solves ONE problem** (single responsibility)
 2. **Is testable in isolation** (pure logic, clear contracts)
 3. **Has no hard-coded dependencies** (receives all inputs via parameters)
 4. **Can be evolved independently** (changes don't ripple to genieService)
-5. **Serves the orchestrator** (waiter provides what orchestrator needs)
+5. **Serves the orchestrator** (provides what orchestrator needs for THIS job)
 
 ### Properties of Good Helpers
 
-| Property                  | Meaning                              | Example                                |
-| ------------------------- | ------------------------------------ | -------------------------------------- |
-| **Single Responsibility** | One reason to change                 | timingResolver: only computes timing   |
-| **Clear Input Contract**  | Well-defined inputs                  | manifest → timing                      |
-| **Clear Output Contract** | Well-defined outputs                 | { eta, schedule }                      |
-| **No Side Effects**       | Doesn't modify external state        | Pure computation                       |
-| **Composable**            | Can be combined with others          | timing → schedule → status → progress  |
-| **Testable**              | Easy to unit test                    | Feed data, check output                |
-| **Replaceable**           | Alternative implementations possible | Another timing algorithm could replace |
+| Property                  | Meaning                       | Example                               |
+| ------------------------- | ----------------------------- | ------------------------------------- |
+| **Single Responsibility** | One reason to change          | timingResolver: only computes timing  |
+| **Clear Input Contract**  | Well-defined inputs           | manifest → timing                     |
+| **Clear Output Contract** | Well-defined outputs          | { eta, schedule }                     |
+| **No Side Effects**       | Doesn't modify external state | Pure computation                      |
+| **Per-Request Scope**     | Fresh for each job            | New instance per resultId             |
+| **Testable**              | Easy to unit test             | Feed data, check output               |
+| **Composable**            | Can be combined with others   | timing → schedule → status → progress |
 
-### Anti-Patterns to Avoid
+---
+
+## What Is a Utility (Task-Assigned Service)?
+
+### Definition
+
+A **utility** is a **long-lived, app-wide service** that:
+
+1. **Accepts task assignments** from genieService
+2. **Maintains state** for multiple concurrent tasks (one per resultId)
+3. **Enriches assignments** with actualized activity from execution
+4. **Decides what to surface** to clients (filtering, aggregating)
+5. **Serves across all jobs** (shared infrastructure)
+
+### Examples & Responsibilities
+
+| Utility         | Task Assignment                        | Enrichment                          | What It Surfaces          |
+| --------------- | -------------------------------------- | ----------------------------------- | ------------------------- |
+| **aiService**   | "Generate content for prompt X"        | Actual results, tokens used, timing | Success/error responses   |
+| **smartPoller** | "Manage polling/status for resultId Y" | Progress updates from execution     | Real-time job status, ETA |
+| **persistence** | "Store result Z"                       | Database operation results          | Confirmation, retrieval   |
+| **logger**      | "Log events for this execution"        | Structured logs from entire job     | Application logs          |
+
+### smartPoller: Deep Dive
+
+**Task Assignment**:
 
 ```javascript
-// ❌ BAD: Helper touches global state
-const badHelper = {
-  compute(manifest) {
-    globalState.eta = calculateEta(manifest);  // Side effect!
-    return globalState.eta;
-  }
-};
+// genieService assigns task
+smartPoller.assignTask(resultId, {
+  eta: 23000, // ms (from timing-resolver helper)
+  totalCalls: 4, // From manifest
+  createdAt: Date.now(),
+});
 
-// ✅ GOOD: Helper returns computed value
-const goodHelper = {
-  compute(manifest) {
-    return calculateEta(manifest);  // Pure output
-  }
-};
+// smartPoller initializes internal state for this resultId
+// {
+//   resultId: "xyz-123",
+//   eta: 23000,
+//   totalCalls: 4,
+//   status: "in-progress",
+//   progress: { completedCalls: 0, currentCall: 0 },
+//   startedAt: timestamp,
+//   lastUpdate: timestamp,
+//   errors: []
+// }
+```
 
-// ❌ BAD: Helper has hard-coded dependency
-const badHelper = {
-  select(tier) {
-    return aiService.selectByTier(tier);  // Coupled to aiService!
-  }
-};
+**Enrichment (during execution)**:
 
-// ✅ GOOD: Helper receives dependencies
-const goodHelper = {
-  select(tier, availableTools) {
-    return availableTools[tier];  // Flexible
-  }
-};
+```javascript
+// As service executes, genieService periodically sends updates
+smartPoller.updateProgress(resultId, {
+  currentCall: 1,
+  completedCalls: 0,
+  nextEstimatedCompletion: Date.now() + 17000,
+  errors: [],
+});
 
-// ❌ BAD: Helper has multiple responsibilities
-const badHelper = {
-  process(manifest) {
-    const eta = calculateEta(manifest);      // Timing
-    const schedule = buildSchedule(eta);     // Scheduling
-    const status = updateStatus(schedule);   // Status
-    return { eta, schedule, status };        // Too many things!
-  }
-};
+smartPoller.updateProgress(resultId, {
+  currentCall: 2,
+  completedCalls: 1,
+  nextEstimatedCompletion: Date.now() + 11000,
+  errors: [],
+});
+```
 
-// ✅ GOOD: Each helper has one job
-const timingHelper = { compute(manifest) { ... } };
-const schedulingHelper = { build(timing) { ... } };
-const statusHelper = { initialize(schedule) { ... } };
+**Surfacing to Client (what smartPoller decides)**:
+
+```javascript
+// Client polls: GET /api/status/:resultId
+// smartPoller.getStatus(resultId) returns:
+{
+  status: "in-progress",
+  eta: 23,                    // seconds
+  calls_completed: 1,
+  calls_total: 4,
+  progress_percent: 25,
+  estimated_remaining_seconds: 11,
+  message: "Processing call 2 of 4..."
+}
+
+// smartPoller DECIDES what to expose
+// - Hides internal details
+// - Shows only relevant progress
+// - Can filter errors (show only critical ones)
+// - Can aggregate/summarize activity
 ```
 
 ---
 
 ## The Waiter Metaphor (Applied to Helpers)
 
-### Restaurant Analogy
-
 ```
 Customer (Service) orders: "I need expert-tier content and standard-tier content"
 
 Waiter (Orchestrator) has team of specialists:
 
-  Timing Specialist:     "How long will that take?"
-  Scheduling Specialist: "When will each dish be ready?"
-  Tool Specialist:       "Which chef should make this?"
-  Status Specialist:     "Is it done yet?"
-  Progress Specialist:   "How much is ready?"
-  Polling Specialist:    "When should customer check?"
-  Error Specialist:      "What went wrong?"
+  Timing Specialist:     "How long will that take?" [HELPER]
+  Scheduling Specialist: "When will each dish be ready?" [HELPER]
+  Tool Specialist:       "Which chef should make this?" [HELPER]
+  Status Specialist:     "Is it done yet?" [HELPER]
+  Progress Specialist:   "How much is ready?" [HELPER]
+
+Waiter also coordinates with UTILITIES:
+
+  Chef (aiService):      "Make this dish" [UTILITY - assigned task]
+  Host (smartPoller):    "Track table status, tell customers when ready" [UTILITY - assigned task]
+  Cashier (persistence): "Store this order" [UTILITY - assigned task]
 
 Waiter coordinates:
   1. Timing specialist says: "23 seconds total"
   2. Scheduling specialist builds: [order 0 at T+0, order 1 at T+6.25, ...]
   3. Tool specialist picks chefs
   4. Status specialist tracks: "0 of 4 orders done"
-  5. Waiter executes in order
-  6. Progress specialist updates: "1 of 4 orders done"
-  7. On completion, waiter gives customer the result
+  5. Waiter ASSIGNS Chef: "Make these in this order"
+  6. Waiter ASSIGNS Host: "Track this table, tell customers when ready"
+  7. As each dish finishes, Waiter UPDATES Host: "Dish 1 done, 3 remain"
+  8. Host DECIDES what to tell customer: "2 of 4 ready (est. 10 min remain)"
+  9. Customer doesn't see details. Just sees: "Your order is 50% ready"
 
-Customer doesn't see any of this. Just sees: "Here's your food!"
+Customer (Client) is happy: "I have visibility without blocking!"
 ```
 
 ---
@@ -452,7 +509,6 @@ Customer doesn't see any of this. Just sees: "Here's your food!"
 - How long will this take? (ETA)
 - When does each call execute? (Schedule)
 - How do we respect rate limits? (Spacing)
-- How do we avoid rapid-fire? (Spacing)
 - How do we avoid quota exhaustion? (Timing)
 
 ### What It Receives
@@ -481,198 +537,128 @@ config = {
   totalEta: 23,  // seconds
 
   schedule: [
-    {
-      callIndex: 0,
-      tier: "expert",
-      startTime: 0,
-      duration: 6000,
-      endTime: 6000
-    },
-    {
-      callIndex: 1,
-      tier: "expert",
-      startTime: 6250,   // 250ms spacing
-      duration: 6000,
-      endTime: 12250
-    },
-    {
-      callIndex: 2,
-      tier: "standard",
-      startTime: 12350,  // 100ms spacing
-      duration: 5000,
-      endTime: 17350
-    },
-    {
-      callIndex: 3,
-      tier: "expert",
-      startTime: 17450,  // 100ms spacing (after flash call)
-      duration: 6000,
-      endTime: 23450
-    }
+    { callIndex: 0, tier: "expert", startTime: 0, duration: 6000, endTime: 6000 },
+    { callIndex: 1, tier: "expert", startTime: 6250, duration: 6000, endTime: 12250 },
+    { callIndex: 2, tier: "standard", startTime: 12350, duration: 5000, endTime: 17350 },
+    { callIndex: 3, tier: "expert", startTime: 17450, duration: 6000, endTime: 23450 }
   ]
 }
-```
-
-### How Orchestrator Uses It
-
-```javascript
-// In orchestrator, on first call with manifest
-if (manifestProcessor.hasManifest(options)) {
-  const timing = timingResolver.compute(manifest, config);
-
-  this.eta = timing.totalEta;
-  this.schedule = timing.schedule;
-
-  // Tell status helper
-  statusManager.initialize(resultId, {
-    eta: timing.totalEta,
-    totalCalls: manifest.totalRequests,
-  });
-}
-
-// On all calls
-const slot = timingResolver.getSlot(schedule, callIndex);
-await waitUntil(slot.startTime);
-const result = await tool.generate(prompt);
 ```
 
 ### Why It's a Good Helper
 
 ✅ **Single responsibility**: Compute timing  
-✅ **Clear inputs**: manifest + config  
-✅ **Clear outputs**: { eta, schedule }  
+✅ **Per-request**: Fresh instance for each job  
+✅ **Clear inputs/outputs**: manifest + config → { eta, schedule }  
 ✅ **No side effects**: Pure calculation  
 ✅ **Testable**: Feed data, check math  
-✅ **Replaceable**: Alternative timing algorithms possible  
-✅ **Solves three problems at once**:
-
-- ETA computation (when will job finish?)
-- Spacing enforcement (avoid rapid-fire)
-- Quota compliance (timing = quota constraint)
+✅ **Solves three problems**: ETA, Spacing, Quota compliance
 
 ---
 
-## Simple Example: The Smart-Polling Helper
+## Simple Example: The smartPoller Utility (Task-Assigned)
 
-### The Problem It Solves
+### The Responsibility It Manages
 
-**Challenge**: Frontend currently polls dumbly ("Is it done?" every 1 second).
+**Role**: Back-end utility **assigned polling/status responsibility** for a specific resultId
 
-- Wastes network requests (polls before job can be done)
-- No visibility into progress
-- No smart timing
+**Why a Utility, not a Helper**:
 
-### What It Receives
+- ✅ Long-lived (app-wide, not per-job)
+- ✅ Handles many concurrent tasks (one per resultId)
+- ✅ Enriched by genieService during execution
+- ✅ Decides what to surface to client
+- ✅ Like aiService (both are task-assigned services)
+
+### Task Assignment (from genieService)
 
 ```javascript
-eta = 23; // seconds (from PART-A response)
+// Helper computes
+const timing = timingResolver.compute(manifest);
 
-// Frontend will call it once
-const strategy = smartPollingHelper.calculateStrategy(eta);
+// genieService assigns task to utility
+smartPoller.assignTask(resultId, {
+  eta: timing.totalEta,
+  totalCalls: manifest.totalRequests,
+});
+
+// smartPoller now owns polling/status for this resultId
 ```
 
-### What It Returns
+### Enrichment (during execution)
 
 ```javascript
+// As service executes, genieService enriches smartPoller
+// Call 1 starts
+smartPoller.updateProgress(resultId, {
+  currentCall: 1,
+  completedCalls: 0,
+  nextEstimatedCompletion: Date.now() + 6000,
+  errors: [],
+});
+
+// Call 1 completes
+smartPoller.updateProgress(resultId, {
+  currentCall: 2,
+  completedCalls: 1,
+  nextEstimatedCompletion: Date.now() + 11250,
+  errors: [],
+});
+
+// ... and so on
+```
+
+### Surfacing to Client (smartPoller decides)
+
+```javascript
+// Client polls: GET /api/status/:resultId
+// smartPoller responds:
 {
-  wait_before_first_poll_ms: 18400,  // Wait ~80% of ETA
-  polling_interval_ms: 2000,         // Then poll every 2 seconds
-  timeout_ms: 53000,                 // Give up if not done by this time
-
-  ui_messages: {
-    initial: "Generating... (est. 23s)",
-    polling: "Checking progress...",
-    timeout: "Taking longer than expected"
-  },
-
-  timeline: {
-    job_starts_at: 0,
-    start_polling_at: 18400,
-    expected_completion: 23000,
-    final_check_at: 25000,
-    timeout_at: 53000
-  }
+  status: "in-progress",
+  eta: 23,
+  calls_completed: 1,
+  calls_total: 4,
+  progress_percent: 25,
+  estimated_remaining_seconds: 17,
+  message: "Generating (1 of 4 calls complete)"
 }
+
+// smartPoller DECIDES:
+// - What to expose (hides internal details)
+// - What to filter (only relevant info)
+// - What to aggregate (clean presentation)
 ```
 
-### How Frontend Uses It
+### Why It's a Good Utility Assignment
 
-```javascript
-// Frontend receives ETA from PART-A
-const { resultId, eta } = await response.json();
+✅ **Clear task boundary**: Owns polling/status for specific resultId  
+✅ **Similar to aiService**: Both accept task assignments from genieService  
+✅ **Stateful responsibility**: Tracks progress as execution unfolds  
+✅ **Enriched by execution**: genieService provides real activity data  
+✅ **Client-facing**: Decides what to surface to users  
+✅ **Testable**: Feed task + updates, verify responses  
+✅ **Solves four problems**:
 
-// Use smart-polling helper
-const strategy = smartPollingHelper.calculateStrategy(eta);
-
-// Show initial message
-showMessage(strategy.ui_messages.initial);
-
-// Wait before polling
-await sleep(strategy.wait_before_first_poll_ms);
-
-// Poll intelligently
-let pollCount = 0;
-while (true) {
-  try {
-    const status = await fetch(`/api/status/${resultId}`).then((r) => r.json());
-    pollCount++;
-
-    if (status.status === "complete") {
-      displayResult(status.result);
-      break;
-    }
-
-    if (status.status === "in-progress") {
-      showMessage(
-        `Generating... (${status.calls_completed}/${status.calls_total} calls)`
-      );
-    }
-
-    // Wait for next poll
-    await sleep(strategy.polling_interval_ms);
-  } catch (err) {
-    // Retry
-    await sleep(strategy.polling_interval_ms * 2);
-  }
-
-  // Check timeout
-  if (Date.now() > strategy.timeout_ms) {
-    showError("Job timeout");
-    break;
-  }
-}
-```
-
-### Why It's a Good Helper
-
-✅ **Single responsibility**: Calculate polling strategy  
-✅ **Clear inputs**: ETA (seconds)  
-✅ **Clear outputs**: { wait_ms, interval_ms, messages, timeline }  
-✅ **No side effects**: Pure calculation  
-✅ **Testable**: Feed eta, check strategy  
-✅ **Replaceable**: Alternative polling strategies possible  
-✅ **Solves the problem**:
-
-- Reduces wasted polls (wait before starting)
-- Improves UX (shows accurate timing)
-- No infrastructure timeout (client not blocked)
+- Client has real-time visibility
+- Backend manages progress transparently
+- No dumb polling (client gets intelligent strategy + real status)
+- Execution details hidden (client sees only relevant info)
 
 ---
 
 ## The Helper Ecosystem (General View)
 
-### Categories of Helpers
+### Helper Categories
 
-| Category           | Purpose                | Examples                              |
-| ------------------ | ---------------------- | ------------------------------------- |
-| **Computation**    | Pure math/logic        | timing-resolver, progress-calculator  |
-| **Validation**     | Check data integrity   | manifest-processor, payload-validator |
-| **Selection**      | Pick from options      | tool-selector, tier-mapper            |
-| **Transformation** | Convert data           | error-correlator, response-builder    |
-| **Organization**   | Structure information  | schedule-builder, status-tracker      |
-| **Guidance**       | Tell others what to do | polling-strategist, wait-calculator   |
+| Category           | Purpose               | Examples                              |
+| ------------------ | --------------------- | ------------------------------------- |
+| **Computation**    | Pure math/logic       | timing-resolver, progress-calculator  |
+| **Validation**     | Check data integrity  | manifest-processor, payload-validator |
+| **Selection**      | Pick from options     | tool-selector, tier-mapper            |
+| **Transformation** | Convert data          | error-correlator, response-builder    |
+| **Organization**   | Structure information | schedule-builder, status-tracker      |
 
-### How They Connect
+### How Helpers Connect
 
 ```
 Service sends manifest
@@ -685,22 +671,20 @@ fifo-scheduler (Build execution order)
          ↓
 Orchestrator executes
          ↓
-status-manager (Track progress)
+statusManager (Track progress)
          ↓
-progress-tracker (Calculate completion %)
+progressTracker (Calculate completion %)
          ↓
 On completion:
-error-reporter (If error, correlate details)
+errorReporter (If error, correlate details)
 response-builder (Format response)
          ↓
-Frontend receives { resultId, status, eta, progress }
+genieService enriches smartPoller (UTILITY) with actualized activity
          ↓
-smart-polling-helper (Calculate polling strategy)
-         ↓
-Frontend polls intelligently
+Client polls smartPoller for status (UTILITY responds)
 ```
 
-Each helper knows one thing. Orchestrator coordinates.
+Each helper knows one thing. Orchestrator coordinates. Utilities maintain state across requests.
 
 ---
 
@@ -710,22 +694,14 @@ Each helper knows one thing. Orchestrator coordinates.
 
 ```javascript
 async process(payload) {
-  // Validate
-  // Check quota
-  // Compute timing
-  // Build schedule
-  // Execute
-  // Track status
-  // Handle errors
-  // Correlate diagnostics
-  // Build response
+  // Validate + Persistence + Quota + Service routing +
+  // Timing + Scheduling + Execution + Status tracking +
+  // Error handling + Response building
 
-  // genieService is EVERYTHING
+  // genieService is EVERYTHING (~500 lines)
   // Hard to test, hard to change, hard to understand
 }
 ```
-
-**Result**: genieService is ~500 lines of tangled logic.
 
 ### After (Pure Orchestrator)
 
@@ -733,46 +709,37 @@ async process(payload) {
 async process(payload) {
   const { resultId, mode, prompt, metadata } = payload;
 
-  // Create orchestrator with helpers
+  // Create orchestrator with HELPERS
   const orchestrator = new Orchestrator(resultId, helpers);
+
+  // ASSIGN TASK to utility
+  smartPoller.assignTask(resultId, { eta, totalCalls });
 
   // Route to service
   const service = this.selectService(mode);
 
-  // Service executes with orchestrator interface
-  const result = await service.handle(payload, { orchestrator, logger, config });
+  // Execute with callback to ENRICH utility
+  const result = await service.handle(payload, {
+    orchestrator,
+    onProgress: (activity) => smartPoller.updateProgress(resultId, activity),
+    logger,
+    config
+  });
 
-  // That's it. Helpers did the work.
   return result;
 }
 ```
 
-**Result**: genieService is ~20 lines of clean orchestration.
-
-### What genieService Can Now "Think" About
-
-With menial work delegated, genieService can focus on:
-
-- ✅ **Domain oversight**: "What's happening across all services?"
-- ✅ **Cross-cutting concerns**: "How do all services flow together?"
-- ✅ **Error recovery**: "If something fails, what's the right recovery?"
-- ✅ **Performance**: "Is the system performing well? Should we add capacity?"
-- ✅ **User experience**: "Are users getting fast, reliable results?"
-- ✅ **Evolution**: "How should we add new services or capabilities?"
-- ✅ **Monitoring**: "What metrics matter? What should we track?"
-
-Instead of getting bogged down in: "How do I compute timing? How do I manage quota? How do I track progress?"
+**Result**: genieService is ~30 lines of clean orchestration.
 
 ---
 
-## The Contract Between genieService and Helpers
+## The Contract Between genieService, Helpers, and Utilities
 
 ### How Helpers Are Called
 
 ```javascript
-// Helpers are NOT imported directly
-// They're provided as part of the resourceKit
-
+// Helpers provided to orchestrator (fresh per job)
 const orchestrator = new Orchestrator(resultId, {
   timingResolver,
   fifoScheduler,
@@ -780,19 +747,43 @@ const orchestrator = new Orchestrator(resultId, {
   // ... other helpers
 });
 
-// Orchestrator calls them when needed
+// Orchestrator calls them on demand
 const timing = timingResolver.compute(manifest, config);
 const schedule = fifoScheduler.build(timing);
 statusManager.initialize(resultId, { eta: timing.totalEta });
+```
+
+### How Utilities Are Assigned
+
+```javascript
+// Utilities are long-lived
+// genieService ASSIGNS tasks to them
+
+// 1. Initial task assignment
+smartPoller.assignTask(resultId, {
+  eta: timing.totalEta,
+  totalCalls: manifest.totalRequests,
+});
+
+// 2. Periodic enrichment during execution
+smartPoller.updateProgress(resultId, {
+  currentCall: callIndex,
+  completedCalls: completedCount,
+  nextEstimatedCompletion: futureTimestamp,
+  errors: errorArray,
+});
+
+// 3. Client polls utility
+const status = smartPoller.getStatus(resultId);
+res.json(status);
 ```
 
 ### How Helpers Interact
 
 ```javascript
 // Helpers are INDEPENDENT
-// They don't call each other
-// They don't share state
-// They're only called by orchestrator
+// They don't call each other or utilities
+// Only orchestrator coordinates
 
 // ✅ GOOD: Orchestrator coordinates
 timing = timingResolver.compute(manifest);
@@ -808,81 +799,81 @@ timingResolver.compute() {
 ### How Helpers Are Tested
 
 ```javascript
-// Each helper is tested independently
-// No need to mock orchestrator or genieService
-
+// Each helper independently testable
 describe("timingResolver", () => {
   it("should compute correct ETA for 4-call manifest", () => {
-    const manifest = { ... };
     const result = timingResolver.compute(manifest, config);
-
-    assert.equal(result.totalEta, 23);  // Expected: 23 seconds
-    assert.equal(result.schedule.length, 4);
+    assert.equal(result.totalEta, 23);
   });
 });
 
-describe("smartPollingHelper", () => {
-  it("should calculate wait time as 80% of ETA", () => {
-    const strategy = smartPollingHelper.calculateStrategy(30);
+// Utilities tested with task assignments
+describe("smartPoller", () => {
+  it("should track progress correctly", () => {
+    smartPoller.assignTask(id, { eta: 23000, totalCalls: 4 });
+    smartPoller.updateProgress(id, { currentCall: 1, completedCalls: 0 });
 
-    assert.equal(strategy.wait_before_first_poll_ms, 24000);  // 80% of 30s
+    const status = smartPoller.getStatus(id);
+    assert.equal(status.calls_completed, 0);
+    assert.equal(status.progress_percent, 0);
   });
 });
 ```
 
 ---
 
-## Benefits of the Helpers Framework
+## Benefits of the Helpers & Utilities Framework
 
 ### For Development
 
-| Benefit         | Why It Matters                                |
-| --------------- | --------------------------------------------- |
-| **Clarity**     | Each helper has one clear job                 |
-| **Testability** | Helpers are independently testable            |
-| **Reusability** | Helpers can be used by multiple services      |
-| **Evolution**   | Change a helper without touching genieService |
-| **Debugging**   | Errors are isolated to specific helpers       |
+| Benefit         | Why It Matters                                                       |
+| --------------- | -------------------------------------------------------------------- |
+| **Clarity**     | Each helper has one clear job; utilities have clear task boundaries  |
+| **Testability** | Helpers & utilities independently testable                           |
+| **Reusability** | Helpers used by multiple orchestrators; utilities shared across jobs |
+| **Evolution**   | Change helper/utility without touching genieService                  |
+| **Debugging**   | Errors isolated to specific components                               |
 
 ### For genieService
 
-| Benefit             | Why It Matters                               |
-| ------------------- | -------------------------------------------- |
-| **Simplicity**      | From 500 lines to 20 lines                   |
-| **Focus**           | Can think about domain, not details          |
-| **Flexibility**     | Helpers can be swapped/evolved independently |
-| **Maintainability** | Less code = fewer bugs                       |
-| **Scalability**     | New services plug in easily                  |
+| Benefit             | Why It Matters                              |
+| ------------------- | ------------------------------------------- |
+| **Simplicity**      | From 500 lines to ~30 lines                 |
+| **Focus**           | Domain thinking, not implementation details |
+| **Flexibility**     | Helpers/utilities swappable independently   |
+| **Maintainability** | Less code = fewer bugs                      |
+| **Scalability**     | New services plug in easily                 |
 
 ### For the Platform
 
-| Benefit           | Why It Matters                                     |
-| ----------------- | -------------------------------------------------- |
-| **Consistency**   | All services use same helper contracts             |
-| **Extensibility** | New helpers added without disrupting existing ones |
-| **Reliability**   | Helpers are thoroughly tested in isolation         |
-| **Performance**   | Helpers are optimized independently                |
-| **Transparency**  | Each helper's behavior is clear and predictable    |
+| Benefit           | Why It Matters                                                   |
+| ----------------- | ---------------------------------------------------------------- |
+| **Consistency**   | All services use same helper/utility patterns                    |
+| **Extensibility** | New helpers/utilities without disrupting existing code           |
+| **Reliability**   | Helpers/utilities thoroughly tested in isolation                 |
+| **Performance**   | Components optimized independently                               |
+| **Transparency**  | Behavior clear and predictable; client gets real-time visibility |
 
 ---
 
-## Status: Foundational Concept
+## Status: Foundational Concept (Updated)
 
 **What we've captured**:
 
-- ✅ The general idea of helpers/assistants
+- ✅ Distinction between helpers (per-request) and utilities (app-wide)
+- ✅ Task assignment pattern (genieService assigns tasks to utilities)
+- ✅ Enrichment pattern (genieService updates utilities with real activity)
+- ✅ smartPoller as example utility (manages polling/status with real data)
 - ✅ Properties of good helpers
-- ✅ Simple examples (timing-resolver, smart-polling)
-- ✅ How helpers free genieService
-- ✅ How helpers interact
-- ✅ Benefits to development, genieService, platform
+- ✅ How they free genieService
 
 **Next Phase**:
 
-- ⏳ Pair each helper to the problem it solves
 - ⏳ Detailed implementation specs for each helper
-- ⏳ Integration guide: How helpers fit into PART-B orchestrator
-- ⏳ Testing strategy for each helper
+- ⏳ Detailed implementation specs for utilities (smartPoller, aiService, etc.)
+- ⏳ Integration guide: How helpers/utilities fit into PART-B orchestrator
+- ⏳ Testing strategy for each component
+- ⏳ Multi-user scaling considerations for utilities
 
 ---
 
@@ -890,38 +881,49 @@ describe("smartPollingHelper", () => {
 
 **genieService should be a CONDUCTOR, not a performer.**
 
-Instead of doing everything:
+**Helpers** do **per-request logic** (pure computation):
 
 ```
-genieService: "I'll validate, compute, schedule, execute, track, error-handle, build response..."
+"Timing specialist, what's the ETA?"
+"Scheduling specialist, build the schedule."
+"Status specialist, initialize for this job."
 ```
 
-It should orchestrate specialists:
+**Utilities** handle **app-wide responsibilities** (long-lived, task-assigned):
 
 ```
-genieService: "Timing specialist, what's the ETA?"
-             "Scheduling specialist, build the schedule."
-             "Status specialist, track progress."
-             "Service, execute with this orchestrator interface."
-             "Helpers, you handle your domains. I handle coordination."
+"aiService, I'm assigning you to generate content."
+"smartPoller, I'm assigning you to manage polling/status for this job."
+"As I execute, I'll update you with real progress data."
 ```
 
-**Result**: A clean, scalable, maintainable platform where:
+**Result**: A clean, scalable, observable platform:
 
-- ✅ genieService is simple and understandable
-- ✅ Helpers are independently testable and evolvable
-- ✅ Services are truly independent (only know orchestrator interface)
-- ✅ New capabilities are added without touching existing code
+- ✅ genieService is simple orchestration (~30 lines)
+- ✅ Helpers are independently testable (pure logic)
+- ✅ Utilities are long-lived, task-assigned services (like aiService)
+- ✅ Clients get real-time visibility via enriched smartPoller
+- ✅ Execution details tracked transparently (smart polling, not dumb)
+- ✅ New capabilities added without touching existing code
 - ✅ The entire system is transparent and predictable
 
-This is the goal. Helpers/Assistants are the mechanism to achieve it.
+This is the goal. **Helpers + Utilities** are the mechanism to achieve it.
 
 ---
 
 ## Document Status
 
-**Status**: DRAFT (Foundational)
+**Status**: DRAFT (Foundational) - **Updated**
+**Date Updated**: December 19, 2025 @ 8:30 PM
+**Key Updates**:
+
+- ✅ Renamed smartPollingHelper → smartPoller (consistent naming)
+- ✅ Reclassified as Utility (task-assigned) not Helper (per-request)
+- ✅ Added "Helpers vs. Utilities" section
+- ✅ Added task assignment + enrichment pattern
+- ✅ Explained genieService periodically enriches utilities with activity
+- ✅ Clarified what utilities decide to surface to clients
+
 **Audience**: Architecture review, implementation planning
-**Next Review**: After helpers-to-problems pairing is complete
 **Related Work**: PART-B Orchestrator, SERVICE_MACHINE_PATTERN, PART_A_AND_PART_B
-````
+**Historical Reference**: [HELPERS_AND_ASSISTANTS_FRAMEWORK_REF0.md](HELPERS_AND_ASSISTANTS_FRAMEWORK_REF0.md)
