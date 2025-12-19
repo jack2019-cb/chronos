@@ -1,9 +1,9 @@
 # PART-B: Orchestrator as Service Provider (Waiter Pattern)
 
-**Status**: DRAFT (Refined Design)  
 **Date**: December 18, 2025  @ 5:35PM
 **Branch**: `feat/ebook-nat-cont`  
 
+**Status**: DRAFT (Refined Design)  
 **Purpose**: Define how autonomous services interact with orchestrator; no hard-coded dependencies  
 **Related Documents**:
 
