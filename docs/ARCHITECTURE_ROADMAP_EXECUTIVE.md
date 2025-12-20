@@ -374,10 +374,10 @@ All services:
 
 ### ASYNC-INFRA: Foundation (Weeks 1-2)
 
-- [ ] Implement PART-A (async acceptance, resultId management)
-- [ ] Implement PART-B Orchestrator pattern (waiter interface)
-- [ ] Create Helpers framework (timingResolver, fifoScheduler, etc.)
-- [ ] Create Utilities framework (smartPoller, task assignment)
+- [x] Implement PART-A (async acceptance, resultId management)
+- [x] Implement PART-B Orchestrator pattern (waiter interface)
+- [x] Create Helpers framework (timingResolver, fifoScheduler, etc.)
+- [x] Create Utilities framework (smartPoller, task assignment)
 
 ### SERVICE-AUTON: Service Migration (Weeks 3-4)
 
