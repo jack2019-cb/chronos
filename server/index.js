@@ -2915,16 +2915,159 @@ module.exports.gracefulShutdown = gracefulShutdown;
 // ==================== PHASE B: E-BOOK GENERATION ====================
 
 /**
- * POST /api/ebook/generate
- * Generate a themed e-book from a prompt
- * Body: { prompt, theme, pageCount, colorPalette, fontSizeScale }
- * Returns: { id, content, html, metadata, pages, can_export, can_override }
+ * POST /api/ebook/generate (PART-A: ASYNC ACCEPTANCE)
+ *
+ * PART-A accepts request and returns 202 immediately with resultId
+ * Backend execution happens asynchronously
+ * Client polls /api/status/:resultId for progress and completion
  */
 app.post("/api/ebook/generate", async (req, res) => {
   const startTime = Date.now();
+  const { v4: uuidv4 } = require("uuid");
+
+  // Set a long timeout for HTTP handler setup (but not for actual generation)
+  req.setTimeout(600000); // 10 minutes for HTTP
+  res.setTimeout(600000); // 10 minutes for HTTP
+
+  const {
+    prompt,
+    theme = "dark",
+    pageCount = 10,
+    colorPalette = "default",
+    fontSizeScale = 1.0,
+  } = req.body;
+
+  // Input validation
+  if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
+    return res
+      .status(400)
+      .json({ error: "Prompt is required and must be a non-empty string" });
+  }
+
+  const validThemes = ["dark", "light", "corporate", "bold"];
+  if (!validThemes.includes(theme)) {
+    return res.status(400).json({
+      error: `Invalid theme. Must be one of: ${validThemes.join(", ")}`,
+    });
+  }
+
+  const pageCountNum = parseInt(pageCount, 10);
+  if (isNaN(pageCountNum) || pageCountNum < 3 || pageCountNum > 20) {
+    return res
+      .status(400)
+      .json({ error: "Page count must be between 3 and 20" });
+  }
+
+  const fontScaleNum = parseFloat(fontSizeScale);
+  if (isNaN(fontScaleNum) || fontScaleNum < 0.8 || fontScaleNum > 1.2) {
+    return res
+      .status(400)
+      .json({ error: "Font size scale must be between 0.8 and 1.2" });
+  }
+
+  // ==================== PART-A: ASYNC ACCEPTANCE ====================
+
+  // Generate resultId for tracking
+  const resultId = uuidv4();
+  const smartPoller = require("./utilities/smartPoller");
+
+  // Initialize status in smartPoller
+  smartPoller.assignTask(resultId, {
+    eta: null, // Will be computed by orchestrator
+    totalCalls: null, // Will be computed from manifest
+  });
+
+  console.log(
+    `[${new Date().toISOString()}] [PART-A] Job accepted: ${resultId}`
+  );
+
+  // Return 202 Accepted immediately (< 100ms)
+  res.status(202).json({
+    resultId,
+    status: "queued",
+    message: "Your request is queued. Check status at /api/status/" + resultId,
+  });
+
+  // ==================== PART-B: ASYNC EXECUTION ====================
+
+  // Hand off asynchronously (no waiting)
+  genieService
+    .process({
+      resultId, // Pass resultId so orchestrator/service can enrich status
+      mode: "ebook",
+      prompt,
+      metadata: {
+        theme,
+        pageCount: pageCountNum,
+        colorPalette,
+        fontSizeScale,
+      },
+    })
+    .then((result) => {
+      // Success: mark complete in smartPoller
+      smartPoller.markComplete(resultId, result);
+      console.log(
+        `[${new Date().toISOString()}] [PART-B] Job completed: ${resultId}`
+      );
+    })
+    .catch((err) => {
+      // Error: mark error in smartPoller
+      smartPoller.markError(resultId, {
+        message: err?.message || "Unknown error",
+        code: err?.code || "GENERATION_ERROR",
+        stack: err?.stack,
+      });
+      console.error(
+        `[${new Date().toISOString()}] [PART-B] Job failed: ${resultId}`,
+        err
+      );
+    });
+});
+
+/**
+ * GET /api/status/:resultId (STATUS POLLING ENDPOINT)
+ *
+ * Returns current status of a generation job
+ * Enables client polling without blocking
+ */
+app.get("/api/status/:resultId", async (req, res) => {
+  const { resultId } = req.params;
+  const smartPoller = require("./utilities/smartPoller");
+
+  try {
+    const status = smartPoller.getStatus(resultId);
+
+    if (!status) {
+      return res.status(404).json({
+        error: "Job not found",
+        resultId,
+      });
+    }
+
+    res.json({
+      resultId,
+      ...status,
+    });
+  } catch (err) {
+    console.error(
+      `[${new Date().toISOString()}] Error fetching status for ${resultId}`,
+      err
+    );
+    res.status(500).json({
+      error: "Failed to fetch status",
+      resultId,
+    });
+  }
+});
+
+// ==================== OLD SYNCHRONOUS HANDLER (ARCHIVED) ====================
+// This is the OLD synchronous implementation kept for reference
+// DO NOT USE - Use the new async PART-A/PART-B above
+app.post("/api/ebook/generate/sync-deprecated", async (req, res) => {
+  const startTime = Date.now();
   const reqId = req.id || "unknown";
   console.log(
-    `[${new Date().toISOString()}] [${reqId}] POST /api/ebook/generate started`
+    `[${new Date().toISOString()}] [${reqId}] POST /api/ebook/generate (DEPRECATED SYNC) started`
   );
 
   // Set a long timeout for large ebook generation (20 pages can take 5+ minutes with Gemini)
