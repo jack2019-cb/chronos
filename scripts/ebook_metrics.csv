@@ -1,0 +1,14 @@
+filename,pageCount,theme,colorPalette,density,html_length,html_present,chapters_count,title,serialized_bytes,process_ms,puppeteer_content_bytes,pdf_bytes,date,branch
+docs/design/ebookService/DATA/Bold_10-page.md,,,,,,,,,,,,,"December 6, 2025",feat/revert
+docs/design/ebookService/DATA/Bold_3-page.md,3,bold,standard,medium,17703,true,3,NOT SET,30780,62617,17818,100971,"December 15, 2025   1:00PM",feat/nat-cont-impl
+docs/design/ebookService/DATA/Bold_3-page_02.md,3,bold,standard,medium,21142,true,3,NOT SET,37703,55145,21268,105606,"December 15, 2025   5:40PM",feat/nat-cont-impl
+docs/design/ebookService/DATA/Bold_3-page_04.md,,,,,,,,,,,,,"December 16, 2025  1:20 AM",fix/nat-cont-model-routing
+docs/design/ebookService/DATA/Corp_10-page.md,,,,,,,,,,,,,"December 6, 2025",feat/revert
+docs/design/ebookService/DATA/Corp_3-page.md,2,corporate,standard,light,17428,true,2,Ebook: The story of a rookie police,30339,38110,17428,96192,"December 6, 2025",feat/revert
+docs/design/ebookService/DATA/Dark_10-page.md,,,,,,,,,,,,,"December 6, 2025",feat/revert
+docs/design/ebookService/DATA/Dark_3-page.md,3,dark,standard,light,19209,true,3,The Whirring Shadow,33407,54886,19343,100730,"December 6, 2025",feat/revert
+docs/design/ebookService/DATA/Light_10-page.md,,,,,,,,,,,,,"December 6, 2025",feat/revert
+docs/design/ebookService/DATA/Light_3-page.md,3,light,standard,light,11204,true,3,Benny the Brave Bunny Learns to Share,17438,38293,11213,88733,"December 12, 2025   10:00AM",feat/ebook-revert
+docs/design/ebookService/DATA/Light_3-page_02.md,3,light,standard,light,17058,true,3,Barty Bumble: The Case of the Missing Sparkleberry,29211,50412,,,"December 13, 2025  12:15AM",feat/ebook-revert
+docs/design/ebookService/DATA/Light_3-page_04.md,3,light,standard,light,17828,true,3,Whisper Witch Willa and the Wandering Broom,30495,49483,,,"December 13, 2025  1:05PM",feat/ebook-revert
+docs/design/ebookService/DATA/Light_3-page_06.md,3,light,standard,medium,13310,true,3,NOT SET,21776,36196,13322,87935,"December 18, 2025  3:00PM",feat/ebook-nat-cont
