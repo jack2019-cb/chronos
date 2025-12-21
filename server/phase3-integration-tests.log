@@ -1,0 +1,49 @@
+
+> server@1.0.0 test
+> FORCE_MOCK_AI=1 vitest --run concurrency.integration.test.mjs genieService.integration.test.js
+
+
+ RUN  v3.2.4 /workspaces/strawberry/server
+
+stdout | __tests__/genieService.integration.test.js > genieService.process() integration > processes ebook mode and returns envelope with pages and metadata
+[QUOTA] Checking quota for mode 'ebook': cost=3, available=20
+[QUOTA] Quota check passed: proceeding with service dispatch
+[EBOOK] handle START requestId=req-1766334591470 prompt=Integration test prompt start=1766334591470
+AI service: MockAIService enabled (FORCE_MOCK_AI=1)
+[NAT-CONT] Starting Phase 1 (Narrative Continuity)
+[NAT-CONT] pageCount: [33m4[39m
+[NAT-CONT] Step 1: Generating structure
+
+stdout | __tests__/genieService.integration.test.js > genieService.process() integration > processes ebook mode and returns envelope with pages and metadata
+[NAT-CONT] Step 2: Generating opening chapter
+
+stdout | __tests__/genieService.integration.test.js > genieService.process() integration > processes ebook mode and returns envelope with pages and metadata
+[NAT-CONT] Step 3: Generating middle chapter batches
+[NAT-CONT] Batch: chapters 2-3
+
+stdout | __tests__/genieService.integration.test.js > genieService.process() integration > processes ebook mode and returns envelope with pages and metadata
+[NAT-CONT] Step 4: Generating closing chapter
+
+stdout | __tests__/genieService.integration.test.js > genieService.process() integration > processes ebook mode and returns envelope with pages and metadata
+[EBOOK] handle COMPLETE (nat-cont_0) requestId=req-1766334591470 processingTimeMs=4
+
+stdout | __tests__/genieService.integration.test.js > genieService.process() integration > processes ebook mode and returns envelope with pages and metadata
+[COMPOSE] Starting compose() call for ebook mode
+[COMPOSE] Starting compose with [33m4[39m pages
+[COMPOSE] theme: corporate colorPalette: muted density: medium
+[COMPOSE] HTML generation complete, length: [33m7909[39m
+
+stdout | __tests__/genieService.integration.test.js > genieService.process() integration > processes ebook mode and returns envelope with pages and metadata
+[COMPOSE] Success! Generated HTML length: [33m7909[39m
+
+stdout | __tests__/genieService.integration.test.js > genieService.process() integration > processes ebook mode and returns envelope with pages and metadata
+[QUOTA] reservation released: { success: [33mtrue[39m, released: [33m3[39m }
+
+ ✓ __tests__/genieService.integration.test.js (1 test) 210ms
+ ✓ __tests__/concurrency.integration.test.mjs (3 tests) 148ms
+
+ Test Files  2 passed (2)
+      Tests  4 passed (4)
+   Start at  16:29:50
+   Duration  574ms (transform 127ms, setup 0ms, collect 169ms, tests 358ms, environment 0ms, prepare 204ms)
+
