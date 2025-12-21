@@ -56,6 +56,7 @@
 let sampleService = require("./sampleService");
 const { saveContentToFile } = require("./utils/fileUtils");
 const normalizePrompt = require("./utils/normalizePrompt");
+const serviceIntegration = require("./serviceIntegration");
 // dbUtils is a Prisma-backed shim present in the repo. Lazy-require inside
 // functions that use it to avoid instantiating DB connections when not needed.
 
@@ -918,6 +919,9 @@ const genieService = {
         let result;
         let classification = null;
 
+        // Generate resultId early for service routing and tracking
+        const resultId = uuidv4();
+
         // NEW: Phase A-B - Extract classification if provided or auto-generate
         // Priority: provided classification > auto-classify flag > auto-mode
         if (payload._classification) {
@@ -932,37 +936,46 @@ const genieService = {
           classification = await this.classifyPrompt(prompt);
         }
 
-        // 1. Route by mode to appropriate service handler
-        switch (mode) {
-          case "demo": {
-            const demoService = require("./demoService");
-            result = await demoService.handle(payload, classification);
-            break;
-          }
-          case "ebook": {
-            const ebookService = require("./ebookService");
-            result = await ebookService.handle(payload, classification);
-            // WEEK 1 FIX: Generate HTML from structured data
-            console.log("[COMPOSE] Starting compose() call for ebook mode");
-            try {
-              const html = await this.compose(result);
-              result.html = html; // Include HTML in result
-              console.log(
-                "[COMPOSE] Success! Generated HTML length:",
-                result.html?.length || "NULL"
-              );
-              if (!result.html || result.html.length === 0) {
-                console.warn("[COMPOSE] WARNING: HTML is empty or null");
-              }
-            } catch (err) {
-              console.error("[COMPOSE] FAILED:", err?.message, err?.stack);
-              result.html = null; // Graceful degradation
+        // 1. Route by mode to appropriate service handler via integration layer
+        // This provides the orchestrator interface and handles all service routing
+        const logger = {
+          log: (msg) => console.log(`[SERVICE] ${msg}`),
+          warn: (msg) => console.warn(`[SERVICE] ${msg}`),
+          error: (msg) => console.error(`[SERVICE] ${msg}`),
+        };
+        const config = {
+          modelTiers: {
+            expert: "gemini-2.5-pro",
+            standard: "gemini-2.5-flash",
+          },
+        };
+
+        // Route to appropriate service through integration layer
+        // This connects to ASYNC-INFRA orchestrator
+        result = await serviceIntegration.routeAndExecute(
+          mode,
+          payload,
+          resultId,
+          logger,
+          config
+        );
+
+        // 1b. For ebook mode, compose HTML from structured data
+        if (mode === "ebook" && result) {
+          console.log("[COMPOSE] Starting compose() call for ebook mode");
+          try {
+            const html = await this.compose(result);
+            result.html = html; // Include HTML in result
+            console.log(
+              "[COMPOSE] Success! Generated HTML length:",
+              result.html?.length || "NULL"
+            );
+            if (!result.html || result.html.length === 0) {
+              console.warn("[COMPOSE] WARNING: HTML is empty or null");
             }
-            break;
-          }
-          case "basic":
-          default: {
-            result = await sampleService.handle(payload, classification);
+          } catch (err) {
+            console.error("[COMPOSE] FAILED:", err?.message, err?.stack);
+            result.html = null; // Graceful degradation
           }
         }
 
@@ -992,7 +1005,7 @@ const genieService = {
         // - Reference-based export (client sends resultId, not content)
         // - Async job queuing (jobs reference resultId, not full content)
         // - Audit trail (all prompts/results stored by UUID)
-        const resultId = uuidv4();
+        // resultId already generated above for service routing
         try {
           await resultDb.saveResult(resultId, envelope.out_envelope, mode);
           envelope.resultId = resultId;

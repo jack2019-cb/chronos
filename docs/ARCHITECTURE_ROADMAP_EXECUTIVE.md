@@ -381,10 +381,10 @@ All services:
 
 ### SERVICE-AUTON: Service Migration (Weeks 3-4)
 
-- [ ] Refactor ebookService to use orchestrator interface
-- [ ] Remove hard-coded tool dependencies
-- [ ] Implement manifest protocol
-- [ ] Comprehensive testing of ebookService with new architecture
+- [x] Refactor ebookService to use orchestrator interface
+- [x] Remove hard-coded tool dependencies
+- [x] Implement manifest protocol
+- [x] Comprehensive testing of ebookService with new architecture
 
 ### PERF-VALIDATE: Validation & Hardening (Weeks 5-6)
 
