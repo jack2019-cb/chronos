@@ -39,7 +39,7 @@ class SmartPoller {
   ) {
     const task = this.tasks.get(resultId);
     if (!task) {
-      logger.warn(`[SmartPoller] Update for unknown task: ${resultId}`);
+      logger.info(`[SmartPoller] Update for unknown task: ${resultId}`);
       return;
     }
 
@@ -91,7 +91,7 @@ class SmartPoller {
   markComplete(resultId, result) {
     const task = this.tasks.get(resultId);
     if (!task) {
-      logger.warn(`[SmartPoller] Mark complete for unknown task: ${resultId}`);
+      logger.info(`[SmartPoller] Mark complete for unknown task: ${resultId}`);
       return;
     }
 
@@ -104,7 +104,7 @@ class SmartPoller {
   markError(resultId, error) {
     const task = this.tasks.get(resultId);
     if (!task) {
-      logger.warn(`[SmartPoller] Mark error for unknown task: ${resultId}`);
+      logger.info(`[SmartPoller] Mark error for unknown task: ${resultId}`);
       return;
     }
 
