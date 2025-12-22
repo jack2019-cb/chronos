@@ -372,14 +372,14 @@ All services:
 
 ## Implementation Path
 
-### ASYNC-INFRA: Foundation (Weeks 1-2)
+### ASYNC-INFRA: Foundation (Weeks 1-2) ✅ Done (See docs/current_design/ASYNC_INFRA)
 
 - [x] Implement PART-A (async acceptance, resultId management)
 - [x] Implement PART-B Orchestrator pattern (waiter interface)
 - [x] Create Helpers framework (timingResolver, fifoScheduler, etc.)
 - [x] Create Utilities framework (smartPoller, task assignment)
 
-### SERVICE-AUTON: Service Migration (Weeks 3-4)
+### SERVICE-AUTON: Service Migration (Weeks 3-4) ✅ Done (See docs/current_design/SERVICE-AUTON)
 
 - [x] Refactor ebookService to use orchestrator interface
 - [x] Remove hard-coded tool dependencies

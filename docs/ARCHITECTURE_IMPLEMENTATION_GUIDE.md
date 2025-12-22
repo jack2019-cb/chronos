@@ -73,7 +73,7 @@ Base: feat/ebook-nat-cont (stable, tested foundation)
 
 ---
 
-## ASYNC-INFRA: Foundation (Weeks 1-2)
+## ASYNC-INFRA: Foundation (Weeks 1-2)  ✅ Done (See docs/current_design/ASYNC_INFRA)
 
 ### ASYNC-INFRA.1: Implement PART-A (Async Acceptance)
 
@@ -746,7 +746,7 @@ describe("ASYNC-INFRA: PART-A + Helpers + smartPoller", () => {
 
 ---
 
-## SERVICE-AUTON: Service Migration (Weeks 3-4)
+## SERVICE-AUTON: Service Migration (Weeks 3-4)  ✅ Done (See docs/current_design/SERVICE-AUTON)
 
 ### SERVICE-AUTON.1: Create SERVICE_MACHINE_PATTERN Interface
 
