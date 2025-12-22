@@ -939,9 +939,8 @@ const genieService = {
         // 1. Route by mode to appropriate service handler via integration layer
         // This provides the orchestrator interface and handles all service routing
         const logger = {
-          log: (msg) => console.log(`[SERVICE] ${msg}`),
           info: (msg) => console.info(`[SERVICE] ${msg}`),
-          warn: (msg) => console.warn(`[SERVICE] ${msg}`),
+          debug: (msg) => console.debug(`[SERVICE] ${msg}`),
           error: (msg) => console.error(`[SERVICE] ${msg}`),
         };
         const config = {
