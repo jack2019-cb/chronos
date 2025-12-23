@@ -56,6 +56,20 @@ class Orchestrator {
       });
       this.eta = timing.totalEta;
 
+      // Instrumentation: log computed timing and schedule for debugging ETA accuracy
+      try {
+        logger.info(
+          `[Orchestrator] timingResolver computed for ${this.resultId}: totalEta=${timing.totalEta}s, totalRequests=${timing.totalRequests}, scheduleLen=${timing.schedule.length}`
+        );
+        timing.schedule.forEach((s) => {
+          logger.debug(
+            `[Orchestrator] schedule - callIndex=${s.callIndex}, tier=${s.tier}, start=${s.startTime}, duration=${s.duration}, end=${s.endTime}`
+          );
+        });
+      } catch (e) {
+        // Non-fatal; continue
+      }
+
       // Helper: Build FIFO schedule with spacing
       this.schedule = this.helpers.fifoScheduler.build(timing);
 

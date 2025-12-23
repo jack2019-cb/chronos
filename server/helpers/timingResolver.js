@@ -45,6 +45,10 @@ function compute(manifest, config = {}) {
   return {
     totalEta: Math.ceil(totalTime / 1000), // in seconds
     totalEtaMs: totalTime, // in milliseconds
+    totalRequests:
+      manifest && Array.isArray(manifest.sequence)
+        ? manifest.sequence.length
+        : schedule.length,
     schedule,
   };
 }

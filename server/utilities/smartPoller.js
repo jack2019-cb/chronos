@@ -33,14 +33,53 @@ class SmartPoller {
     logger.debug(`[SmartPoller] Task assigned: ${resultId}, ETA: ${eta}s`);
   }
 
+  updateTask(resultId, updates) {
+    let task = this.tasks.get(resultId);
+    if (!task) {
+      logger.info(
+        `[SmartPoller] updateTask for unknown task: ${resultId} - creating placeholder`
+      );
+      // Create a placeholder task so downstream callers (statusManager/orchestrator)
+      // can safely update fields even if assignTask wasn't called yet.
+      this.tasks.set(resultId, {
+        resultId,
+        status: "in-progress",
+        eta: typeof updates.eta === "number" ? updates.eta : null,
+        totalCalls: updates.totalCalls || 0,
+        callsCompleted: updates.callsCompleted || 0,
+        startedAt: Date.now(),
+        lastUpdatedAt: Date.now(),
+        errors: updates.errors || [],
+      });
+      task = this.tasks.get(resultId);
+    }
+
+    Object.assign(task, updates);
+    task.lastUpdatedAt = Date.now();
+    logger.debug(`[SmartPoller] Task updated: ${resultId}`, updates);
+  }
+
   updateProgress(
     resultId,
     { callsCompleted, nextEstimatedCompletion, errors = [] }
   ) {
-    const task = this.tasks.get(resultId);
+    let task = this.tasks.get(resultId);
     if (!task) {
-      logger.info(`[SmartPoller] Update for unknown task: ${resultId}`);
-      return;
+      logger.info(
+        `[SmartPoller] Progress update for unknown task: ${resultId} - creating placeholder`
+      );
+      this.tasks.set(resultId, {
+        resultId,
+        status: "in-progress",
+        eta: null,
+        totalCalls: 0,
+        callsCompleted: callsCompleted || 0,
+        startedAt: Date.now(),
+        lastUpdatedAt: Date.now(),
+        errors: errors || [],
+        nextEstimatedCompletion: nextEstimatedCompletion || null,
+      });
+      task = this.tasks.get(resultId);
     }
 
     task.callsCompleted = callsCompleted;
@@ -48,9 +87,8 @@ class SmartPoller {
     task.errors = errors;
     task.lastUpdatedAt = Date.now();
 
-    const progressPercent = Math.round(
-      (callsCompleted / task.totalCalls) * 100
-    );
+    const total = task.totalCalls || 1;
+    const progressPercent = Math.round((callsCompleted / total) * 100);
     logger.debug(
       `[SmartPoller] Progress update: ${resultId} - ${progressPercent}%`
     );
@@ -63,42 +101,56 @@ class SmartPoller {
     }
 
     const elapsedMs = Date.now() - task.startedAt;
+    const now = Date.now();
+    // Coerce eta to numeric seconds when possible
+    const etaNum =
+      typeof task.eta === "number"
+        ? task.eta
+        : typeof task.eta === "string" && !isNaN(Number(task.eta))
+        ? Number(task.eta)
+        : null;
+
+    const nextEst =
+      typeof task.nextEstimatedCompletion === "number"
+        ? task.nextEstimatedCompletion
+        : null;
+
     const remainingMs = Math.max(
       0,
-      (task.nextEstimatedCompletion || Date.now()) - Date.now()
-    );
-    const progressPercent = Math.round(
-      (task.callsCompleted / task.totalCalls) * 100
+      (nextEst || (etaNum ? now + etaNum * 1000 : now)) - now
     );
 
-    return {
+    const progressPercent = Math.round(
+      (task.callsCompleted / (task.totalCalls || 1)) * 100
+    );
+
+    const response = {
       resultId: task.resultId,
       status: task.status,
-      eta: task.eta,
+      eta: etaNum,
       elapsed_seconds: Math.ceil(elapsedMs / 1000),
       calls_completed: task.callsCompleted,
-      calls_total: task.totalCalls,
+      calls_total: task.totalCalls || 0,
       progress_percent: progressPercent,
       estimated_remaining_seconds: Math.ceil(remainingMs / 1000),
       message: `Processing call ${task.callsCompleted + 1} of ${
-        task.totalCalls
+        task.totalCalls || 0
       }`,
-      errors: task.errors.length > 0 ? task.errors : null,
+      errors: task.errors && task.errors.length > 0 ? task.errors : null,
       lastUpdatedAt: new Date(task.lastUpdatedAt).toISOString(),
     };
-  }
 
-  markComplete(resultId, result) {
-    const task = this.tasks.get(resultId);
-    if (!task) {
-      logger.info(`[SmartPoller] Mark complete for unknown task: ${resultId}`);
-      return;
+    // Include result if task is complete
+    if (task.status === "complete" && task.result) {
+      response.result = task.result;
     }
 
-    task.status = "complete";
-    task.result = result;
-    task.completedAt = Date.now();
-    logger.info(`[SmartPoller] Task completed: ${resultId}`);
+    // Include error if task failed
+    if (task.status === "error" && task.error) {
+      response.error = task.error;
+    }
+
+    return response;
   }
 
   markError(resultId, error) {
@@ -112,6 +164,20 @@ class SmartPoller {
     task.error = error;
     task.failedAt = Date.now();
     logger.error(`[SmartPoller] Task failed: ${resultId}: ${error.message}`);
+  }
+
+  markComplete(resultId, result) {
+    const task = this.tasks.get(resultId);
+    if (!task) {
+      logger.info(`[SmartPoller] Mark complete for unknown task: ${resultId}`);
+      return;
+    }
+
+    task.status = "complete";
+    task.result = result;
+    task.completedAt = Date.now();
+    task.lastUpdatedAt = Date.now();
+    logger.info(`[SmartPoller] Task completed: ${resultId}`);
   }
 
   // Periodic cleanup of old completed tasks

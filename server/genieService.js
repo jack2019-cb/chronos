@@ -919,8 +919,11 @@ const genieService = {
         let result;
         let classification = null;
 
-        // Generate resultId early for service routing and tracking
-        const resultId = uuidv4();
+        // Generate or reuse resultId for service routing and tracking
+        // Prefer a caller-provided `payload.resultId` (from PART-A) so the
+        // same UUID is used across index.js, orchestrator, and smartPoller.
+        const resultId =
+          payload && payload.resultId ? payload.resultId : uuidv4();
 
         // NEW: Phase A-B - Extract classification if provided or auto-generate
         // Priority: provided classification > auto-classify flag > auto-mode
@@ -1270,8 +1273,8 @@ const genieService = {
       : ""
   }
   
-  <div class="chapter-content" style="margin-top: 20px;">
-    ${(chapter.content || "").replace(/\n/g, "<br />")}
+    <div class="chapter-content" style="margin-top: 20px;">
+    ${String(chapter.content || "").replace(/\n/g, "<br />")}
   </div>
 </div>
 `

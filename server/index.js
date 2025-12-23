@@ -374,8 +374,14 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 app.use(morgan("dev"));
 app.use(cors());
 // Apply rate limiting, but allow a dev-only bypass via DISABLE_RATE_LIMIT=1
-if (process.env.DISABLE_RATE_LIMIT === "1") {
-  console.log("Rate limit disabled via DISABLE_RATE_LIMIT=1");
+// and always skip rate limiting when running tests (Vitest/Jest) so
+// concurrent request tests are not rejected with 429s.
+const RUNNING_IN_TEST =
+  process.env.NODE_ENV === "test" || !!process.env.VITEST_WORKER_ID;
+if (process.env.DISABLE_RATE_LIMIT === "1" || RUNNING_IN_TEST) {
+  console.log(
+    "Rate limit disabled via DISABLE_RATE_LIMIT=1 or test environment"
+  );
 } else {
   if (!DEV_MINIMAL) {
     app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }));
