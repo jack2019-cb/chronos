@@ -4,8 +4,31 @@
 **Branch**: `feat/ebook-nat-cont`
 
 **Audience**: Engineers, Implementers, QA  
-**Status**: Implementation Ready
-**Related**: [ARCHITECTURE_ROADMAP_EXECUTIVE.md](ARCHITECTURE_ROADMAP_EXECUTIVE.md) (design guide)
+**Status**: Implementation Ready | Phase 2 Reset Required
+**Related**:
+
+- [ARCHITECTURE_ROADMAP_EXECUTIVE.md](ARCHITECTURE_ROADMAP_EXECUTIVE.md) (design guide)
+- [SERVICE_AUTON_RESET_PLAN.md](SERVICE_AUTON_RESET_PLAN.md) ⚠️ **REVISED APPROACH** (Phase 2 reset strategy)
+
+---
+
+## ⚠️ Critical Update: Phase 2 Reset Required
+
+**As of December 23, 2025**: Phase 2 (SERVICE-AUTON) has been analyzed and requires reset.
+
+**Reason**: SERVICE-AUTON phase made assumptions about Phase 1 infrastructure without calling Phase 1 services to validate those assumptions. This led to:
+
+- ID linkage mismatch
+- Type errors in data pipeline
+- Status store race conditions
+- Manifest formula mismatch
+- ETA timing drift
+
+**Solution**: See [SERVICE_AUTON_RESET_PLAN.md](SERVICE_AUTON_RESET_PLAN.md) for revised Phase 2 approach.
+
+**Key Change**: Instead of SERVICE-AUTON refactoring services independently, it now **delegates to Phase 1 services directly**—preventing assumption drift by construction.
+
+**This Document**: Contains original historical implementation details (Phases 1-3 as originally planned). The current execution follows [SERVICE_AUTON_RESET_PLAN.md](SERVICE_AUTON_RESET_PLAN.md).
 
 ---
 
@@ -73,7 +96,7 @@ Base: feat/ebook-nat-cont (stable, tested foundation)
 
 ---
 
-## ASYNC-INFRA: Foundation (Weeks 1-2)  ✅ Done (See docs/current_design/ASYNC_INFRA)
+## ASYNC-INFRA: Foundation (Weeks 1-2) ✅ Done (See docs/current_design/ASYNC_INFRA)
 
 ### ASYNC-INFRA.1: Implement PART-A (Async Acceptance)
 
@@ -746,7 +769,7 @@ describe("ASYNC-INFRA: PART-A + Helpers + smartPoller", () => {
 
 ---
 
-## SERVICE-AUTON: Service Migration (Weeks 3-4)  ✅ Done (See docs/current_design/SERVICE-AUTON)
+## SERVICE-AUTON: Service Migration (Weeks 3-4) ✅ Done (See docs/current_design/SERVICE-AUTON)
 
 ### SERVICE-AUTON.1: Create SERVICE_MACHINE_PATTERN Interface
 
