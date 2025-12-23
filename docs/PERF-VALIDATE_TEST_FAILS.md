@@ -2,7 +2,7 @@
 
 **Date**: December 22, 2025 @ 6:30PM
 **Branch**: `PERF-VALIDATE`  
-**Test Command**: `cd /workspaces/strawberry/server && npm test -- __tests__/perf-validate-http-async.test.js`
+**Test Command**: `cd server && npm test -- __tests__/perf-validate-http-async.test.js`
 
 ---
 
