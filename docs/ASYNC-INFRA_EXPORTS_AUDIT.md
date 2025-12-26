@@ -4,6 +4,8 @@
 **Purpose**: Document Phase 1 exports for Phase 2 delegation  
 **Status**: ✅ VERIFIED
 
+**Related:** SERVICE_AUTON_RESET_IMPLEMENTATION.md
+
 ---
 
 ## Helpers (`server/helpers/index.js`)
