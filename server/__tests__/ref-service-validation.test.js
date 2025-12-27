@@ -1,3 +1,5 @@
+/// <reference types="vitest" />
+
 /**
  * Reference Service Validation Tests
  *
@@ -5,13 +7,14 @@
  * ReferenceEbookService, it will work correctly with Phase 1 infrastructure.
  *
  * If these tests all pass, Phase 1 is proven correct and safe for Phase 2.
+ *
+ * Note: describe, it, expect are available globally via vitest config (globals: true)
  */
 
-const { describe, it, expect } = require("vitest");
 const ReferenceEbookService = require("../services/refService.ebookService");
 const Orchestrator = require("../orchestrator");
 const helpers = require("../helpers");
-const logger = require("../logger");
+const logger = require("../utils/logger");
 
 describe("Reference Service Validation (Phase 1 Proof)", () => {
   let service;
