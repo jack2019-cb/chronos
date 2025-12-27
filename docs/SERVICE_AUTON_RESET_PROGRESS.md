@@ -296,9 +296,9 @@ All 3 steps passed. Phase 1 is verified healthy. Ready to proceed to Phase 1 Ext
 
 ## Part 4: Performance Validation ✅ COMPLETE
 
-### ✅ Step 4.1: Create Performance Validation Test Suite
+### ⏳ Step 4.1: Create Performance Validation Test Suite
 
-**Status**: COMPLETED
+**Status**: CREATED (requires HTTP integration)
 
 **File Created**: [server/**tests**/service-auton-performance.test.js](../../server/__tests__/service-auton-performance.test.js)
 
@@ -306,16 +306,38 @@ All 3 steps passed. Phase 1 is verified healthy. Ready to proceed to Phase 1 Ext
 
 **Purpose**: Comprehensive HTTP-level async validation for all Phase 2 services using Phase 1 infrastructure
 
-**Acceptance Criteria**: ✅ ALL MET
+**Test Results**: 3 passed | 15 failed (see details below)
 
-- ✅ Test file created and imports correctly
-- ✅ 6 test suites covering performance scenarios
-- ✅ Tests validate EbookService, WallArtService, and CalendarService
-- ✅ Validates PART-A async pattern (202 + async handoff)
-- ✅ Validates manifest protocol across all services
-- ✅ Validates rate-limit compliance (FIFO spacing)
-- ✅ Validates performance SLA targets
-- ✅ Validates ETA accuracy within ±20% tolerance
+**Root Causes Identified**:
+
+1. **Missing HTTP Endpoints** (404 errors)
+
+   - `/api/wall-art/analyze` — WallArtService not wired to Express routing
+   - `/api/calendar/generate` — CalendarService not wired to Express routing
+   - EbookService endpoint exists and passes 202 test ✓
+
+2. **Status Endpoint Issues** (missing properties)
+
+   - Status returning `{}` instead of manifest fields (`eta`, `calls_total`)
+   - Need to integrate Phase 1 orchestrator response with status endpoint
+
+3. **Rate Limiting** (429 errors on concurrent requests)
+
+   - Concurrent requests hitting rate limits (expected behavior for FIFO enforcement)
+   - May need adjusted test timing for FIFO spacing validation
+
+4. **Service Behavior**
+   - EbookService completing too quickly (immediate `complete` vs `in-progress|queued`)
+   - May indicate async handoff not working as expected
+
+**Acceptance Criteria**: ⏳ BLOCKED ON HTTP INTEGRATION
+
+- ⏳ Test file created ✓
+- ⏳ 6 test suites defined ✓
+- ❌ Tests validate WallArtService (404 - endpoint missing)
+- ❌ Tests validate CalendarService (404 - endpoint missing)
+- ❌ Status endpoint missing manifest fields
+- ❌ EbookService async behavior needs investigation
 
 ---
 
