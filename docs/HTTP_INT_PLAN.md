@@ -212,77 +212,64 @@ async process(payload) {
 }
 ```
 
-**Updated**:
+**Updated**: Add two new switch cases for wall-art and calendar modes
 
 ```javascript
 async process(payload) {
   const { resultId, mode } = payload;
 
-  // Route to appropriate service
   let service;
+  let result;
+
   switch (mode) {
-    case "ebook":
+    case "ebook": {
+      const ebookService = require("./services/ebookService");
       service = ebookService;
+      // ... existing ebook logic ...
       break;
-    case "wall-art":
-      service = wallArtService;
+    }
+    case "wall-art": {
+      const WallArtService = require("./services/wallArtService");
+      const wallArtService = new WallArtService();
+
+      // Create orchestrator with helpers
+      const Orchestrator = require("./orchestrator");
+      const helpers = require("./helpers");
+      const orchestrator = new Orchestrator(resultId, helpers);
+
+      // Execute service with orchestrator context
+      result = await wallArtService.handle(payload, {
+        orchestrator,
+        onProgress: (update) => { /* no-op, endpoint handles smartPoller */ },
+      });
       break;
-    case "calendar":
-      service = calendarService;
+    }
+    case "calendar": {
+      const CalendarService = require("./services/calendarService");
+      const calendarService = new CalendarService();
+
+      // Create orchestrator with helpers
+      const Orchestrator = require("./orchestrator");
+      const helpers = require("./helpers");
+      const orchestrator = new Orchestrator(resultId, helpers);
+
+      // Execute service with orchestrator context
+      result = await calendarService.handle(payload, {
+        orchestrator,
+        onProgress: (update) => { /* no-op, endpoint handles smartPoller */ },
+      });
       break;
+    }
     default:
       throw new Error(`Unknown mode: ${mode}`);
   }
 
-  // Create orchestrator with helpers
-  const orchestrator = new Orchestrator(resultId, {
-    timingResolver,
-    fifoScheduler,
-    statusManager,
-    logger
-  });
-
-  // Assign task to smartPoller BEFORE execution
-  // (so ETA is available immediately on first status check)
-  const eta = await estimateETA(orchestrator, service, payload);
-  smartPoller.assignTask(resultId, { eta, totalCalls: null });
-
-  // Execute service
-  const result = await service.handle(payload, {
-    orchestrator,
-    onProgress: (activity) => {
-      smartPoller.updateProgress(resultId, {
-        callsCompleted: activity.callsCompleted,
-        currentCall: activity.currentCall,
-        totalCalls: activity.totalCalls,
-        eta: orchestrator.eta
-      });
-    },
-    logger
-  });
-
-  // Mark complete with result
-  smartPoller.markComplete(resultId, result);
-
+  // Return result to endpoint (endpoint handles smartPoller integration)
   return result;
 }
-
-// Helper: Estimate ETA before execution (run first orchestrator call dry-run)
-async function estimateETA(orchestrator, service, payload) {
-  // Service calls orchestrator.generate() on first call
-  // This populates orchestrator.manifest and orchestrator.eta
-  // We can extract ETA from here
-
-  // For now: estimate based on service mode
-  const estimates = {
-    "ebook": 30,
-    "wall-art": 20,
-    "calendar": 25
-  };
-
-  return estimates[payload.mode] || 20;
-}
 ```
+
+**CRITICAL**: smartPoller integration (assignTask, markComplete, markError) happens in the **endpoints**, not here. genieService.process() is only responsible for routing to the correct service.
 
 ---
 

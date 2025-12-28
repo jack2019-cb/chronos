@@ -5,7 +5,7 @@
 
 **Related**: HTTP_INT_PLAN.md (design document)  
 **Scope**: Execute HTTP integration fixes in sequence
-**Status**: Ready for Execution  
+**Status**: Ready for Execution
 
 ---
 
@@ -116,126 +116,60 @@ curl -X POST http://localhost:3000/api/calendar/generate \
 
 ---
 
-### Step 2: Update genieService Router & Orchestrator Integration
+### Step 2: Update genieService Router to Include wall-art and calendar Modes
 
 **File**: `server/genieService.js`
 
-**Locate**: `async process(payload)` method
+**Locate**: `async process(payload)` method, specifically the switch statement that routes by mode
 
-**Action**: Replace entire method with updated router + orchestrator integration
+**Action**: Add two new cases for wall-art and calendar modes
 
-**Code**:
+**Code to Add** (insert after "case 'ebook'" block):
 
 ```javascript
-async process(payload) {
-  const { resultId, mode, prompt } = payload;
+case "wall-art": {
+  const WallArtService = require("./services/wallArtService");
+  const wallArtService = new WallArtService();
 
-  try {
-    logger.info(
-      `[genieService] Processing: resultId=${resultId}, mode=${mode}`
-    );
+  // Create orchestrator with helpers
+  const Orchestrator = require("./orchestrator");
+  const helpers = require("./helpers");
+  const orchestrator = new Orchestrator(resultId, helpers);
 
-    // Step 1: SELECT SERVICE based on mode
-    let service;
-    switch (mode) {
-      case "ebook":
-        service = ebookService;
-        break;
-      case "wall-art":
-        const WallArtService = require("./services/wallArtService");
-        service = new WallArtService();
-        break;
-      case "calendar":
-        const CalendarService = require("./services/calendarService");
-        service = new CalendarService();
-        break;
-      default:
-        throw new Error(`Unknown mode: ${mode}`);
-    }
-
-    logger.info(`[genieService] Routing to ${mode} service`);
-
-    // Step 2: CREATE ORCHESTRATOR with helpers
-    const Orchestrator = require("./orchestrator");
-    const helpers = require("./helpers");
-    const orchestrator = new Orchestrator(resultId, helpers);
-
-    // Step 3: ESTIMATE ETA (for immediate smartPoller assignment)
-    const estimatedETA = this.estimateETA(mode, payload);
-    logger.info(
-      `[genieService] Estimated ETA: ${estimatedETA}s for ${mode}`
-    );
-
-    // Step 4: ASSIGN TASK to smartPoller immediately
-    // (so first status check returns ETA)
-    const smartPoller = require("./utilities/smartPoller");
-    smartPoller.assignTask(resultId, {
-      eta: estimatedETA,
-      totalCalls: null, // Will be updated when manifest received
-    });
-
-    logger.info(`[genieService] Task assigned to smartPoller`);
-
-    // Step 5: EXECUTE SERVICE with orchestrator
-    const result = await service.handle(payload, {
-      orchestrator,
-      onProgress: (activity) => {
-        // Enrich smartPoller with real activity
-        smartPoller.updateProgress(resultId, {
-          callsCompleted: activity.callsCompleted,
-          currentCall: activity.currentCall,
-          totalCalls: activity.totalCalls,
-          eta: orchestrator.eta || estimatedETA, // Use orchestrator ETA if computed
-        });
-
-        logger.debug(
-          `[genieService] Progress: ${activity.callsCompleted}/${activity.totalCalls}`
-        );
-      },
-      logger,
-    });
-
-    logger.info(`[genieService] Service execution complete`);
-
-    // Step 6: MARK COMPLETE with result
-    smartPoller.markComplete(resultId, result);
-
-    logger.info(`[genieService] Task marked complete, result stored`);
-
-    return result;
-  } catch (err) {
-    // Step 7: ERROR HANDLING
-    logger.error(`[genieService] Error for ${resultId}:`, err);
-
-    const smartPoller = require("./utilities/smartPoller");
-    smartPoller.markError(resultId, {
-      message: err.message,
-      code: err.code || "GENERATION_ERROR",
-    });
-
-    throw err;
-  }
+  // Execute service with orchestrator context
+  result = await wallArtService.handle(payload, {
+    orchestrator,
+    onProgress: (update) => { /* no-op, endpoint handles smartPoller */ },
+  });
+  break;
 }
 
-// HELPER: Estimate ETA based on mode
-estimateETA(mode, payload) {
-  // ETA estimates per service type
-  const estimates = {
-    ebook: 30 + (payload.pageCount || 10) * 0.5, // 30s base + 0.5s per page
-    "wall-art": 20, // 2 orchestrator calls
-    calendar: 25, // 3 orchestrator calls
-  };
+case "calendar": {
+  const CalendarService = require("./services/calendarService");
+  const calendarService = new CalendarService();
 
-  return Math.ceil(estimates[mode] || 20);
+  // Create orchestrator with helpers
+  const Orchestrator = require("./orchestrator");
+  const helpers = require("./helpers");
+  const orchestrator = new Orchestrator(resultId, helpers);
+
+  // Execute service with orchestrator context
+  result = await calendarService.handle(payload, {
+    orchestrator,
+    onProgress: (update) => { /* no-op, endpoint handles smartPoller */ },
+  });
+  break;
 }
 ```
+
+**CRITICAL**: genieService.process() should **NOT** call smartPoller methods. That responsibility belongs to the endpoints (see Step 1). genieService is only responsible for routing to the correct service and returning the result.
 
 **Verification**:
 
 ```bash
 # Check genieService routes correctly
 # This happens automatically when endpoints are called
-# Verify via logs: [genieService] Routing to wall-art service
+# Verify via logs: service execution paths
 ```
 
 ---
@@ -383,12 +317,7 @@ class SmartPoller {
    */
   updateProgress(
     resultId,
-    {
-      callsCompleted = 0,
-      currentCall = 0,
-      totalCalls = null,
-      eta = null,
-    } = {}
+    { callsCompleted = 0, currentCall = 0, totalCalls = null, eta = null } = {}
   ) {
     const task = this.tasks.get(resultId);
     if (!task) return;
@@ -501,24 +430,24 @@ node -e "const sp = require('./server/utilities/smartPoller'); console.log(sp.as
 
 ---
 
-### Step 5: Wire Orchestrator ETA to smartPoller
+### Step 5: Verify Endpoints Handle smartPoller Integration Correctly
 
-**File**: `server/genieService.js` (already partially done in Step 2)
+**File**: `server/index.js` (wall-art and calendar endpoints)
 
-**Verify**: The `onProgress` callback includes `eta: orchestrator.eta`
-
-**Code (to verify exists)**:
+**Verify**: Both new endpoints follow the ebook pattern with .then() and .catch() callbacks:
 
 ```javascript
-onProgress: (activity) => {
-  smartPoller.updateProgress(resultId, {
-    callsCompleted: activity.callsCompleted,
-    currentCall: activity.currentCall,
-    totalCalls: activity.totalCalls,
-    eta: orchestrator.eta || estimatedETA, // ← Must be present
+genieService
+  .process({ ... })
+  .then((result) => {
+    smartPoller.markComplete(resultId, result);  // ← Must be in .then()
+  })
+  .catch((err) => {
+    smartPoller.markError(resultId, { message: err.message, ... });
   });
-}
 ```
+
+**Key Point**: smartPoller integration (assignTask, markComplete, markError) happens in the **endpoint handler**, not in genieService.process(). This is the critical architectural pattern that was missing in the first attempt.
 
 ---
 
@@ -531,6 +460,7 @@ onProgress: (activity) => {
 **Locate**: Rate limit middleware setup
 
 **Current**:
+
 ```javascript
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -539,6 +469,7 @@ const limiter = rateLimit({
 ```
 
 **Updated**:
+
 ```javascript
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -547,6 +478,8 @@ const limiter = rateLimit({
 ```
 
 **Rationale**: Tests make 5 concurrent requests. 100 limit gets hit too early. 200 allows room.
+
+**Note**: If changing rate limits affects production, consider instead adjusting tests to be less concurrent (add spacing between requests).
 
 ---
 
@@ -639,6 +572,7 @@ npm test -- service-auton-delegation.test.js
 ## Expected Results
 
 ### Before HTTP Integration:
+
 ```
 ❌ service-auton-performance.test.js: 14 FAIL, 4 PASS
 - 404 errors on wall-art, calendar endpoints
@@ -648,6 +582,7 @@ npm test -- service-auton-delegation.test.js
 ```
 
 ### After HTTP Integration:
+
 ```
 ✅ service-auton-performance.test.js: 18 PASS (all)
 ✅ POST /api/wall-art/generate returns 202
@@ -659,4 +594,3 @@ npm test -- service-auton-delegation.test.js
 ```
 
 ---
-
