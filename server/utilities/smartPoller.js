@@ -35,7 +35,14 @@ class SmartPoller {
 
   updateProgress(
     resultId,
-    { callsCompleted, nextEstimatedCompletion, errors = [] }
+    {
+      callsCompleted,
+      currentCall,
+      totalCalls,
+      eta,
+      nextEstimatedCompletion,
+      errors = [],
+    }
   ) {
     const task = this.tasks.get(resultId);
     if (!task) {
@@ -43,17 +50,37 @@ class SmartPoller {
       return;
     }
 
-    task.callsCompleted = callsCompleted;
-    task.nextEstimatedCompletion = nextEstimatedCompletion;
+    // Update from orchestrator calls (Phase 2 services)
+    if (callsCompleted !== undefined) {
+      task.callsCompleted = callsCompleted;
+    }
+    if (currentCall !== undefined) {
+      task.currentCall = currentCall;
+    }
+    if (totalCalls !== undefined) {
+      task.totalCalls = totalCalls;
+    }
+    if (eta !== undefined) {
+      task.eta = eta;
+    }
+
+    // Legacy update format (kept for backward compatibility)
+    if (nextEstimatedCompletion !== undefined) {
+      task.nextEstimatedCompletion = nextEstimatedCompletion;
+    }
+
     task.errors = errors;
     task.lastUpdatedAt = Date.now();
+    task.status = "in-progress"; // Ensure status is in-progress during updates
 
-    const progressPercent = Math.round(
-      (callsCompleted / task.totalCalls) * 100
-    );
-    logger.debug(
-      `[SmartPoller] Progress update: ${resultId} - ${progressPercent}%`
-    );
+    if (task.totalCalls && task.callsCompleted !== undefined) {
+      const progressPercent = Math.round(
+        (task.callsCompleted / task.totalCalls) * 100
+      );
+      logger.debug(
+        `[SmartPoller] Progress update: ${resultId} - ${progressPercent}% (${task.callsCompleted}/${task.totalCalls})`
+      );
+    }
   }
 
   getStatus(resultId) {
@@ -63,29 +90,53 @@ class SmartPoller {
     }
 
     const elapsedMs = Date.now() - task.startedAt;
-    const remainingMs = Math.max(
-      0,
-      (task.nextEstimatedCompletion || Date.now()) - Date.now()
-    );
-    const progressPercent = Math.round(
-      (task.callsCompleted / task.totalCalls) * 100
-    );
+    const remainingMs = Math.max(0, task.eta ? task.eta * 1000 - elapsedMs : 0);
 
-    return {
+    const progressPercent =
+      task.totalCalls && task.callsCompleted !== undefined
+        ? Math.round((task.callsCompleted / task.totalCalls) * 100)
+        : 0;
+
+    const status = {
       resultId: task.resultId,
       status: task.status,
-      eta: task.eta,
       elapsed_seconds: Math.ceil(elapsedMs / 1000),
-      calls_completed: task.callsCompleted,
-      calls_total: task.totalCalls,
-      progress_percent: progressPercent,
-      estimated_remaining_seconds: Math.ceil(remainingMs / 1000),
-      message: `Processing call ${task.callsCompleted + 1} of ${
-        task.totalCalls
-      }`,
-      errors: task.errors.length > 0 ? task.errors : null,
+      errors: task.errors && task.errors.length > 0 ? task.errors : null,
       lastUpdatedAt: new Date(task.lastUpdatedAt).toISOString(),
     };
+
+    // Add orchestrator metadata if available
+    if (task.eta !== null && task.eta !== undefined) {
+      status.eta = task.eta;
+    }
+    if (task.totalCalls !== null && task.totalCalls !== undefined) {
+      status.calls_total = task.totalCalls;
+    }
+    if (task.callsCompleted !== undefined) {
+      status.calls_completed = task.callsCompleted;
+    }
+    if (task.currentCall !== undefined) {
+      status.current_call = task.currentCall;
+    }
+    if (task.totalCalls && task.callsCompleted !== undefined) {
+      status.progress_percent = progressPercent;
+      status.message = `Processing call ${task.callsCompleted} of ${task.totalCalls}`;
+    }
+    if (remainingMs > 0) {
+      status.estimated_remaining_seconds = Math.ceil(remainingMs / 1000);
+    }
+
+    // Add result on completion
+    if (task.status === "complete" && task.result) {
+      status.result = task.result;
+    }
+
+    // Add error details on failure
+    if (task.status === "error" && task.error) {
+      status.error = task.error;
+    }
+
+    return status;
   }
 
   markComplete(resultId, result) {

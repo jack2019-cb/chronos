@@ -3060,6 +3060,238 @@ app.get("/api/status/:resultId", async (req, res) => {
   }
 });
 
+// ==================== PHASE B: WALL ART GENERATION ====================
+
+/**
+ * POST /api/wall-art/analyze (PART-A: ASYNC ACCEPTANCE)
+ *
+ * PART-A accepts request and returns 202 immediately with resultId
+ * Backend execution happens asynchronously
+ * Client polls /api/status/:resultId for progress and completion
+ */
+app.post("/api/wall-art/analyze", async (req, res) => {
+  const { v4: uuidv4 } = require("uuid");
+
+  // Set a long timeout for HTTP handler setup
+  req.setTimeout(600000); // 10 minutes for HTTP
+  res.setTimeout(600000); // 10 minutes for HTTP
+
+  // Accept either prompt or imageUrl
+  const prompt = req.body.prompt || req.body.imageUrl || "";
+  const { style = "minimalist", dimensions = "3x4" } = req.body;
+
+  // Input validation
+  if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
+    return res
+      .status(400)
+      .json({
+        error: "Prompt or imageUrl is required and must be a non-empty string",
+      });
+  }
+
+  const validStyles = [
+    "minimalist",
+    "abstract",
+    "realistic",
+    "surreal",
+    "modern",
+  ];
+  if (!validStyles.includes(style)) {
+    return res.status(400).json({
+      error: `Invalid style. Must be one of: ${validStyles.join(", ")}`,
+    });
+  }
+
+  // ==================== PART-A: ASYNC ACCEPTANCE ====================
+
+  // Generate resultId for tracking
+  const resultId = uuidv4();
+  const smartPoller = require("./utilities/smartPoller");
+
+  // Initialize status in smartPoller
+  smartPoller.assignTask(resultId, {
+    eta: null, // Will be computed by orchestrator
+    totalCalls: null, // Will be computed from manifest
+  });
+
+  console.log(
+    `[${new Date().toISOString()}] [PART-A] WallArt job accepted: ${resultId}`
+  );
+
+  // Return 202 Accepted immediately (< 100ms)
+  res.status(202).json({
+    resultId,
+    status: "queued",
+    message: "Your request is queued. Check status at /api/status/" + resultId,
+  });
+
+  // ==================== PART-B: ASYNC EXECUTION ====================
+
+  // Hand off asynchronously (no waiting)
+  (async () => {
+    try {
+      const WallArtService = require("./services/wallArtService");
+      const wallArtService = new WallArtService();
+      const Orchestrator = require("./orchestrator");
+      const helpers = require("./helpers");
+
+      const orchestrator = new Orchestrator(resultId, helpers);
+
+      // Invoke service with orchestrator context
+      const result = await wallArtService.handle(
+        { resultId, prompt, style, dimensions },
+        {
+          orchestrator,
+          onProgress: (update) => {
+            smartPoller.updateProgress(resultId, update);
+          },
+        }
+      );
+
+      // Success: mark complete in smartPoller
+      smartPoller.markComplete(resultId, result);
+      console.log(
+        `[${new Date().toISOString()}] [PART-B] WallArt job completed: ${resultId}`
+      );
+    } catch (err) {
+      // Error: mark error in smartPoller
+      smartPoller.markError(resultId, {
+        message: err?.message || "Unknown error",
+        code: err?.code || "GENERATION_ERROR",
+        stack: err?.stack,
+      });
+      console.error(
+        `[${new Date().toISOString()}] [PART-B] WallArt job failed: ${resultId}`,
+        err
+      );
+    }
+  })();
+});
+
+// ==================== PHASE B: CALENDAR GENERATION ====================
+
+/**
+ * POST /api/calendar/generate (PART-A: ASYNC ACCEPTANCE)
+ *
+ * PART-A accepts request and returns 202 immediately with resultId
+ * Backend execution happens asynchronously
+ * Client polls /api/status/:resultId for progress and completion
+ */
+app.post("/api/calendar/generate", async (req, res) => {
+  const { v4: uuidv4 } = require("uuid");
+
+  // Set a long timeout for HTTP handler setup
+  req.setTimeout(600000); // 10 minutes for HTTP
+  res.setTimeout(600000); // 10 minutes for HTTP
+
+  const { month = "January", year = 2025, theme = "professional" } = req.body;
+
+  // Input validation
+  const validMonths = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+  if (!validMonths.includes(month)) {
+    return res.status(400).json({
+      error: `Invalid month. Must be one of: ${validMonths.join(", ")}`,
+    });
+  }
+
+  const yearNum = parseInt(year, 10);
+  if (isNaN(yearNum) || yearNum < 2020 || yearNum > 2030) {
+    return res
+      .status(400)
+      .json({ error: "Year must be between 2020 and 2030" });
+  }
+
+  const validThemes = ["tech", "business", "personal", "creative"];
+  if (!validThemes.includes(theme)) {
+    return res.status(400).json({
+      error: `Invalid theme. Must be one of: ${validThemes.join(", ")}`,
+    });
+  }
+
+  // ==================== PART-A: ASYNC ACCEPTANCE ====================
+
+  // Generate resultId for tracking
+  const resultId = uuidv4();
+  const smartPoller = require("./utilities/smartPoller");
+
+  // Initialize status in smartPoller
+  smartPoller.assignTask(resultId, {
+    eta: null, // Will be computed by orchestrator
+    totalCalls: null, // Will be computed from manifest
+  });
+
+  console.log(
+    `[${new Date().toISOString()}] [PART-A] Calendar job accepted: ${resultId}`
+  );
+
+  // Return 202 Accepted immediately (< 100ms)
+  res.status(202).json({
+    resultId,
+    status: "queued",
+    message: "Your request is queued. Check status at /api/status/" + resultId,
+  });
+
+  // ==================== PART-B: ASYNC EXECUTION ====================
+
+  // Hand off asynchronously (no waiting)
+  (async () => {
+    try {
+      const CalendarService = require("./services/calendarService");
+      const calendarService = new CalendarService();
+      const Orchestrator = require("./orchestrator");
+      const helpers = require("./helpers");
+
+      const orchestrator = new Orchestrator(resultId, helpers);
+
+      // Invoke service with orchestrator context
+      const result = await calendarService.handle(
+        {
+          resultId,
+          prompt: `Create a calendar for ${month}, ${yearNum} with ${theme} theme`,
+          year: yearNum,
+          theme,
+        },
+        {
+          orchestrator,
+          onProgress: (update) => {
+            smartPoller.updateProgress(resultId, update);
+          },
+        }
+      );
+
+      // Success: mark complete in smartPoller
+      smartPoller.markComplete(resultId, result);
+      console.log(
+        `[${new Date().toISOString()}] [PART-B] Calendar job completed: ${resultId}`
+      );
+    } catch (err) {
+      // Error: mark error in smartPoller
+      smartPoller.markError(resultId, {
+        message: err?.message || "Unknown error",
+        code: err?.code || "GENERATION_ERROR",
+        stack: err?.stack,
+      });
+      console.error(
+        `[${new Date().toISOString()}] [PART-B] Calendar job failed: ${resultId}`,
+        err
+      );
+    }
+  })();
+});
+
 // ==================== OLD SYNCHRONOUS HANDLER (ARCHIVED) ====================
 // This is the OLD synchronous implementation kept for reference
 // DO NOT USE - Use the new async PART-A/PART-B above
