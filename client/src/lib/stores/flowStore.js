@@ -62,6 +62,7 @@ function createFlowStore() {
     latency: 0,
     overrideCost: 0,
     error: null,
+    startTime: null, // For elapsed time tracking
   });
 
   return {
@@ -139,6 +140,14 @@ function createFlowStore() {
     },
 
     /**
+     * Set the start time for elapsed time tracking
+     * @param {number} timestamp - Timestamp in milliseconds
+     */
+    setStartTime(timestamp = Date.now()) {
+      update((store) => ({ ...store, startTime: timestamp }));
+    },
+
+    /**
      * Set an error
      * @param {Object} errorObj - Error object with {status, message, retryable}
      */
@@ -159,6 +168,7 @@ function createFlowStore() {
         latency: 0,
         overrideCost: 0,
         error: null,
+        startTime: null,
       });
     },
   };
@@ -166,6 +176,47 @@ function createFlowStore() {
 
 // Export singleton store instance
 export const flowStore = createFlowStore();
+
+/**
+ * Derived Stores - Computed state for common use cases
+ */
+
+// Overall flow progress (0-100) based on current state
+export const flowProgress = derived(flowStore, ($flowStore) => {
+  const stateProgress = {
+    [STATES.INITIAL]: 0,
+    [STATES.MEDIUM_SELECTED]: 10,
+    [STATES.GENERATING]: 50,
+    [STATES.CLASSIFICATION_READY]: 60,
+    [STATES.RESULT_READY]: 90,
+    [STATES.OVERRIDE_ACTIVE]: 70,
+    [STATES.COMPLETE]: 100,
+    [STATES.ERROR]: 0,
+  };
+  return stateProgress[$flowStore.state] || 0;
+});
+
+// Whether the flow is idle (not in progress)
+export const isFlowIdle = derived(flowStore, ($flowStore) => {
+  // A component checking if flow is idle would need access to loading states
+  // Since the lib version has minimal state, we check the state directly
+  return ![STATES.GENERATING, STATES.OVERRIDE_ACTIVE].includes(
+    $flowStore.state
+  );
+});
+
+// Total elapsed time (in ms) since flow started
+export const elapsedTime = derived(flowStore, ($flowStore) => {
+  if (!$flowStore.startTime) return 0;
+  return Date.now() - $flowStore.startTime;
+});
+
+// Format latency for display (e.g., "123ms" or "2.5s")
+export const formattedLatency = derived(flowStore, ($flowStore) => {
+  const ms = $flowStore.latency;
+  if (ms < 1000) return `${Math.round(ms)}ms`;
+  return `${(ms / 1000).toFixed(1)}s`;
+});
 
 // Export state constants for components
 export { STATES, VALID_TRANSITIONS };

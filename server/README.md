@@ -31,6 +31,19 @@ For comprehensive Gemini 2.5 payload documentation, see [`../docs/GEMINI_2.5_PAY
 
 For manual API testing templates, see [`../docs/design/ebookService/TEST_RESULTS_SESSION2.md`](../docs/design/ebookService/TEST_RESULTS_SESSION2.md).
 
+### Quota System (Gemini Free Tier)
+
+The server implements a quota system to respect Gemini API's free tier rate limit (20 calls/minute). For complete implementation details, architecture, and testing information, see [`../docs/design/QUOTA_IMPLEMENTATION_SUMMARY.md`](../docs/design/QUOTA_IMPLEMENTATION_SUMMARY.md).
+
+**Key components**:
+
+- **quotaTracker** (`server/utils/quotaTracker.js`) — Pure accounting module for API call tracking
+- **Orchestrator quota check** (`server/genieService.js`) — Validates quota before service dispatch
+- **Call tracking** (`server/geminiClient.js`) — Records successful API calls
+- **202 Deferral response** (`server/index.js`) — Handles quota exhaustion with retry guidance
+
+When quota is exhausted, the API returns HTTP 202 with retry guidance. See the implementation summary for cost calculation models, architecture diagram, and comprehensive test coverage (51 quota-specific tests).
+
 ## Quick prerequisites
 
 - Node.js and npm

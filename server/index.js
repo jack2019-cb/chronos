@@ -369,7 +369,8 @@ function attemptPuppeteerRestart() {
 app.set("trust proxy", 1);
 
 // Middleware
-app.use(express.json());
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
 app.use(morgan("dev"));
 app.use(cors());
 // Apply rate limiting, but allow a dev-only bypass via DISABLE_RATE_LIMIT=1
@@ -2914,16 +2915,340 @@ module.exports.gracefulShutdown = gracefulShutdown;
 // ==================== PHASE B: E-BOOK GENERATION ====================
 
 /**
- * POST /api/ebook/generate
- * Generate a themed e-book from a prompt
- * Body: { prompt, theme, pageCount, colorPalette, fontSizeScale }
- * Returns: { id, content, html, metadata, pages, can_export, can_override }
+ * POST /api/ebook/generate (PART-A: ASYNC ACCEPTANCE)
+ *
+ * PART-A accepts request and returns 202 immediately with resultId
+ * Backend execution happens asynchronously
+ * Client polls /api/status/:resultId for progress and completion
  */
 app.post("/api/ebook/generate", async (req, res) => {
   const startTime = Date.now();
+  const { v4: uuidv4 } = require("uuid");
+
+  // Set a long timeout for HTTP handler setup (but not for actual generation)
+  req.setTimeout(600000); // 10 minutes for HTTP
+  res.setTimeout(600000); // 10 minutes for HTTP
+
+  const {
+    prompt,
+    theme = "dark",
+    pageCount = 10,
+    colorPalette = "default",
+    fontSizeScale = 1.0,
+  } = req.body;
+
+  // Input validation
+  if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
+    return res
+      .status(400)
+      .json({ error: "Prompt is required and must be a non-empty string" });
+  }
+
+  const validThemes = ["dark", "light", "corporate", "bold"];
+  if (!validThemes.includes(theme)) {
+    return res.status(400).json({
+      error: `Invalid theme. Must be one of: ${validThemes.join(", ")}`,
+    });
+  }
+
+  const pageCountNum = parseInt(pageCount, 10);
+  if (isNaN(pageCountNum) || pageCountNum < 3 || pageCountNum > 20) {
+    return res
+      .status(400)
+      .json({ error: "Page count must be between 3 and 20" });
+  }
+
+  const fontScaleNum = parseFloat(fontSizeScale);
+  if (isNaN(fontScaleNum) || fontScaleNum < 0.8 || fontScaleNum > 1.2) {
+    return res
+      .status(400)
+      .json({ error: "Font size scale must be between 0.8 and 1.2" });
+  }
+
+  // ==================== PART-A: ASYNC ACCEPTANCE ====================
+
+  // Generate resultId for tracking
+  const resultId = uuidv4();
+  const smartPoller = require("./utilities/smartPoller");
+
+  // Initialize status in smartPoller
+  smartPoller.assignTask(resultId, {
+    eta: null, // Will be computed by orchestrator
+    totalCalls: null, // Will be computed from manifest
+  });
+
+  console.log(
+    `[${new Date().toISOString()}] [PART-A] Job accepted: ${resultId}`
+  );
+
+  // Return 202 Accepted immediately (< 100ms)
+  res.status(202).json({
+    resultId,
+    status: "queued",
+    message: "Your request is queued. Check status at /api/status/" + resultId,
+  });
+
+  // ==================== PART-B: ASYNC EXECUTION ====================
+
+  // Hand off asynchronously (no waiting)
+  genieService
+    .process({
+      resultId, // Pass resultId so orchestrator/service can enrich status
+      mode: "ebook",
+      prompt,
+      metadata: {
+        theme,
+        pageCount: pageCountNum,
+        colorPalette,
+        fontSizeScale,
+      },
+    })
+    .then((result) => {
+      // Success: mark complete in smartPoller
+      smartPoller.markComplete(resultId, result);
+      console.log(
+        `[${new Date().toISOString()}] [PART-B] Job completed: ${resultId}`
+      );
+    })
+    .catch((err) => {
+      // Error: mark error in smartPoller
+      smartPoller.markError(resultId, {
+        message: err?.message || "Unknown error",
+        code: err?.code || "GENERATION_ERROR",
+        stack: err?.stack,
+      });
+      console.error(
+        `[${new Date().toISOString()}] [PART-B] Job failed: ${resultId}`,
+        err
+      );
+    });
+});
+
+/**
+ * POST /api/wall-art/generate (PART-A: ASYNC ACCEPTANCE)
+ *
+ * PART-A accepts request and returns 202 immediately with resultId
+ * Backend execution happens asynchronously
+ * Client polls /api/status/:resultId for progress and completion
+ */
+app.post("/api/wall-art/generate", async (req, res) => {
+  const startTime = Date.now();
+  const { v4: uuidv4 } = require("uuid");
+
+  // Set a long timeout for HTTP handler setup (but not for actual generation)
+  req.setTimeout(600000); // 10 minutes for HTTP
+  res.setTimeout(600000); // 10 minutes for HTTP
+
+  const { prompt, style = "minimalist", dimensions = "3x4" } = req.body;
+
+  // Input validation
+  if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
+    return res
+      .status(400)
+      .json({ error: "Prompt is required and must be a non-empty string" });
+  }
+
+  // ==================== PART-A: ASYNC ACCEPTANCE ====================
+
+  // Generate resultId for tracking
+  const resultId = uuidv4();
+  const smartPoller = require("./utilities/smartPoller");
+
+  // Initialize status in smartPoller
+  smartPoller.assignTask(resultId, {
+    eta: null, // Will be computed by orchestrator
+    totalCalls: null, // Will be computed from manifest
+  });
+
+  console.log(
+    `[${new Date().toISOString()}] [PART-A] Wall-art job accepted: ${resultId}`
+  );
+
+  // Return 202 Accepted immediately (< 100ms)
+  res.status(202).json({
+    resultId,
+    status: "queued",
+    message:
+      "Your wall art request is queued. Check status at /api/status/" +
+      resultId,
+  });
+
+  // ==================== PART-B: ASYNC EXECUTION ====================
+
+  // Hand off asynchronously (no waiting)
+  genieService
+    .process({
+      resultId, // Pass resultId so orchestrator/service can enrich status
+      mode: "wall-art",
+      prompt,
+      style,
+      dimensions,
+    })
+    .then((result) => {
+      // Success: mark complete in smartPoller
+      smartPoller.markComplete(resultId, result);
+      console.log(
+        `[${new Date().toISOString()}] [PART-B] Wall-art job completed: ${resultId}`
+      );
+    })
+    .catch((err) => {
+      // Error: mark error in smartPoller
+      smartPoller.markError(resultId, {
+        message: err?.message || "Unknown error",
+        code: err?.code || "GENERATION_ERROR",
+        stack: err?.stack,
+      });
+      console.error(
+        `[${new Date().toISOString()}] [PART-B] Wall-art job failed: ${resultId}`,
+        err
+      );
+    });
+});
+
+/**
+ * POST /api/calendar/generate (PART-A: ASYNC ACCEPTANCE)
+ *
+ * PART-A accepts request and returns 202 immediately with resultId
+ * Backend execution happens asynchronously
+ * Client polls /api/status/:resultId for progress and completion
+ */
+app.post("/api/calendar/generate", async (req, res) => {
+  const startTime = Date.now();
+  const { v4: uuidv4 } = require("uuid");
+
+  // Set a long timeout for HTTP handler setup (but not for actual generation)
+  req.setTimeout(600000); // 10 minutes for HTTP
+  res.setTimeout(600000); // 10 minutes for HTTP
+
+  const { prompt, year = 2025, theme = "modern" } = req.body;
+
+  // Input validation
+  if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
+    return res
+      .status(400)
+      .json({ error: "Prompt is required and must be a non-empty string" });
+  }
+
+  // ==================== PART-A: ASYNC ACCEPTANCE ====================
+
+  // Generate resultId for tracking
+  const resultId = uuidv4();
+  const smartPoller = require("./utilities/smartPoller");
+
+  // Initialize status in smartPoller
+  smartPoller.assignTask(resultId, {
+    eta: null, // Will be computed by orchestrator
+    totalCalls: null, // Will be computed from manifest
+  });
+
+  console.log(
+    `[${new Date().toISOString()}] [PART-A] Calendar job accepted: ${resultId}`
+  );
+
+  // Return 202 Accepted immediately (< 100ms)
+  res.status(202).json({
+    resultId,
+    status: "queued",
+    message:
+      "Your calendar request is queued. Check status at /api/status/" +
+      resultId,
+  });
+
+  // ==================== PART-B: ASYNC EXECUTION ====================
+
+  // Hand off asynchronously (no waiting)
+  genieService
+    .process({
+      resultId, // Pass resultId so orchestrator/service can enrich status
+      mode: "calendar",
+      prompt,
+      year,
+      theme,
+    })
+    .then((result) => {
+      // Success: mark complete in smartPoller
+      smartPoller.markComplete(resultId, result);
+      console.log(
+        `[${new Date().toISOString()}] [PART-B] Calendar job completed: ${resultId}`
+      );
+    })
+    .catch((err) => {
+      // Error: mark error in smartPoller
+      smartPoller.markError(resultId, {
+        message: err?.message || "Unknown error",
+        code: err?.code || "GENERATION_ERROR",
+        stack: err?.stack,
+      });
+      console.error(
+        `[${new Date().toISOString()}] [PART-B] Calendar job failed: ${resultId}`,
+        err
+      );
+    });
+});
+
+/**
+ * GET /api/status/:resultId (STATUS POLLING ENDPOINT)
+ *
+ * Returns current status of a generation job
+ * Enables client polling without blocking
+ */
+app.get("/api/status/:resultId", async (req, res) => {
+  try {
+    const { resultId } = req.params;
+    const smartPoller = require("./utilities/smartPoller");
+
+    const taskStatus = smartPoller.getStatus(resultId);
+
+    // If job not found
+    if (!taskStatus) {
+      return res.status(404).json({ error: "Job not found", resultId });
+    }
+
+    // Build response with canonical fields
+    const response = {
+      resultId,
+      status: taskStatus.status || "in-progress",
+      eta:
+        typeof taskStatus.eta === "number"
+          ? taskStatus.eta
+          : taskStatus.eta || null,
+      calls_total: taskStatus.calls_total || 0,
+      calls_completed: taskStatus.calls_completed || 0,
+      progress_percent: taskStatus.progress_percent || 0,
+      message: taskStatus.message || `Job ${taskStatus.status}`,
+      result: taskStatus.result || null,
+    };
+
+    if (taskStatus.error) {
+      response.error = taskStatus.error;
+    }
+
+    if (taskStatus.startedAt) {
+      response.elapsed_seconds = Math.round(
+        (Date.now() - taskStatus.startedAt) / 1000
+      );
+      response.remaining_seconds = Math.max(
+        0,
+        (taskStatus.eta || 0) - response.elapsed_seconds
+      );
+    }
+
+    console.debug(`[status] ${resultId}: ${JSON.stringify(response)}`);
+    res.json(response);
+  } catch (err) {
+    console.error("Status endpoint error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// ==================== OLD SYNCHRONOUS HANDLER (ARCHIVED) ====================
+// This is the OLD synchronous implementation kept for reference
+// DO NOT USE - Use the new async PART-A/PART-B above
+app.post("/api/ebook/generate/sync-deprecated", async (req, res) => {
+  const startTime = Date.now();
   const reqId = req.id || "unknown";
   console.log(
-    `[${new Date().toISOString()}] [${reqId}] POST /api/ebook/generate started`
+    `[${new Date().toISOString()}] [${reqId}] POST /api/ebook/generate (DEPRECATED SYNC) started`
   );
 
   // Set a long timeout for large ebook generation (20 pages can take 5+ minutes with Gemini)
@@ -2988,6 +3313,23 @@ app.post("/api/ebook/generate", async (req, res) => {
     try {
       result = await genieService.process(payload);
     } catch (err) {
+      // ✅ Handle quota deferral (202 response)
+      if (err.defer && err.status === 202) {
+        console.log(
+          `[${new Date().toISOString()}] [${reqId}] Quota insufficient, returning 202 deferral`
+        );
+
+        return res.status(202).json({
+          message: "Quota exhausted; request deferred for retry",
+          requiredQuota: err.cost,
+          availableQuota: err.availableQuota,
+          windowResetAtMs: err.windowResetAtMs,
+          retryAfterSeconds: Math.ceil((err.windowResetAtMs || 60000) / 1000),
+          requestId: reqId,
+        });
+      }
+
+      // Other errors: 400, 500, etc.
       console.error(
         `[${new Date().toISOString()}] [${reqId}] genieService.process() ERROR: ${
           err?.message

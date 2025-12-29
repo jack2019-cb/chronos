@@ -13,7 +13,7 @@
 
 <script>
   import { onMount } from "svelte";
-  import { flowStore, flowProgress } from "../stores/flowStore";
+  import { flowStore, flowProgress } from "../lib/stores/flowStore.js";
   import { classify, generate, applyOverride } from "../lib/api";
 
   // Import child components

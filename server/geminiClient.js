@@ -9,30 +9,61 @@ async function callGemini({
   modality = "TEXT",
   generationConfig = {},
   imageB64 = null, // optional base64 image when using IMAGERY
+  callIndex = 0, // Call sequence number for rate-limiting (0, 1, 2, ...)
+  model = null, // Model name (e.g., "gemini-2.5-pro", "gemini-2.5-flash")
 }) {
   // choose env vars by modality
   const isText = modality === "TEXT";
   const isImage = modality === "IMAGE";
   const isImagery = modality === "IMAGERY"; // image understanding / reverse-check
 
-  const apiUrl =
-    (isText
-      ? process.env.GEMINI_API_URL_TEXT
-      : isImage
-      ? process.env.GEMINI_API_URL_IMAGE
-      : isImagery
-      ? process.env.GEMINI_API_URL_IMAGERY
-      : null) || process.env.GEMINI_API_URL;
-  const rawKey =
-    (isText
-      ? process.env.GEMINI_API_KEY_TEXT
-      : isImage
-      ? process.env.GEMINI_API_KEY_IMAGE
-      : isImagery
-      ? process.env.GEMINI_API_KEY_IMAGE
-      : null) || process.env.GEMINI_API_KEY;
+  // Determine which API endpoint to use
+  // Priority: model parameter > modality-specific env vars > fallback to generic GEMINI_API_URL
+  let apiUrl;
+  let rawKey;
+
+  if (model === "gemini-2.5-pro") {
+    // Use Pro model endpoints (primary/structure)
+    apiUrl =
+      process.env.GEMINI_API_URL_PRO ||
+      process.env.GEMINI_API_URL_TEXT ||
+      process.env.GEMINI_API_URL;
+    rawKey =
+      process.env.GEMINI_API_KEY_PRO ||
+      process.env.GEMINI_API_KEY_TEXT ||
+      process.env.GEMINI_API_KEY;
+  } else if (model === "gemini-2.5-flash") {
+    // Use Flash model endpoints (secondary/chapters)
+    apiUrl =
+      process.env.GEMINI_API_URL_FLASH ||
+      process.env.GEMINI_API_URL_TEXT ||
+      process.env.GEMINI_API_URL;
+    rawKey =
+      process.env.GEMINI_API_KEY_FLASH ||
+      process.env.GEMINI_API_KEY_TEXT ||
+      process.env.GEMINI_API_KEY;
+  } else {
+    // Fallback: select by modality (original logic)
+    apiUrl =
+      (isText
+        ? process.env.GEMINI_API_URL_TEXT
+        : isImage
+        ? process.env.GEMINI_API_URL_IMAGE
+        : isImagery
+        ? process.env.GEMINI_API_URL_IMAGERY
+        : null) || process.env.GEMINI_API_URL;
+    rawKey =
+      (isText
+        ? process.env.GEMINI_API_KEY_TEXT
+        : isImage
+        ? process.env.GEMINI_API_KEY_IMAGE
+        : isImagery
+        ? process.env.GEMINI_API_KEY_IMAGE
+        : null) || process.env.GEMINI_API_KEY;
+  }
 
   if (process.env.DEBUG_GEMINI_API === "1") {
+    console.error("[DEBUG_GEMINI_API] Model:", model || "not specified");
     console.error("[DEBUG_GEMINI_API] Modality:", modality);
     console.error(
       "[DEBUG_GEMINI_API] API URL:",
@@ -106,12 +137,58 @@ async function callGemini({
   };
 
   try {
+    // ✅ NEW: PRE-CALL RATE-LIMIT CHECK: Enforce inter-request pacing
+    // This prevents burst rate overloads by enforcing minimum delays
+    // between consecutive API calls to Gemini's infrastructure.
+    const rateLimiter = require("./utils/rateLimiter");
+    await rateLimiter.waitForReadiness(callIndex);
+
+    // Log which model is being used
+    if (model) {
+      console.log(`[GEMINI] Call ${callIndex}: Using model ${model}`);
+    }
+
+    // ✅ EXISTING: PRE-CALL QUOTA CHECK: Verify quota available before making API request
+    // This prevents calls from being sent to Gemini when quota is exhausted
+    const quotaTracker = require("./utils/quotaTracker");
+    const quotaStatus = quotaTracker.getStatus();
+
+    if (quotaStatus.availableQuota < 1) {
+      console.log(
+        `[QUOTA] Pre-call check BLOCKED: exhausted quota (${quotaStatus.callCount}/${quotaStatus.limit})`
+      );
+      return {
+        ok: false,
+        status: 429, // Too Many Requests
+        error: `Quota exhausted: reached limit of ${
+          quotaStatus.limit
+        } calls per ${Math.round(
+          quotaStatus.windowExpiredMs / 1000
+        )} seconds. Please retry after quota window resets.`,
+        quotaExhausted: true,
+        availableQuota: quotaStatus.availableQuota,
+      };
+    }
+
+    const callStart = Date.now();
+    console.log(
+      `[GEMINI] callStart model=${
+        model || "auto"
+      } callIndex=${callIndex} at=${callStart}`
+    );
+
     const resp = await fetchImpl(apiUrl, {
       method: "POST",
       headers,
       body: JSON.stringify(body),
     });
     const raw = await resp.text();
+    const callElapsed = Date.now() - callStart;
+    console.log(
+      `[GEMINI] callComplete model=${
+        model || "auto"
+      } callIndex=${callIndex} elapsed=${callElapsed}ms status=${resp.status}`
+    );
     let json = null;
     try {
       json = JSON.parse(raw);
@@ -177,6 +254,24 @@ async function callGemini({
     }
 
     const imageFound = findImage(json) || null;
+
+    // ✅ Track successful call for both rate-limiting and quota purposes (only on success)
+    if (resp.ok) {
+      try {
+        // NEW: Record for rate-limiting
+        rateLimiter.recordCall();
+        console.log(`[RATE-LIMIT] Call ${callIndex}: timestamp recorded`);
+
+        // EXISTING: Record for quota
+        const quotaTracker = require("./utils/quotaTracker");
+        quotaTracker.recordCall();
+        console.log(
+          `[GEMINI] API call successful, quota tracked: ${resp.status}`
+        );
+      } catch (err) {
+        console.warn("[QUOTA] Failed to track API call:", err && err.message);
+      }
+    }
 
     return {
       ok: resp.ok,

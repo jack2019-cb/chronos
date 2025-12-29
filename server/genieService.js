@@ -78,6 +78,192 @@ const AWAIT_PERSISTENCE = (() => {
   );
 })();
 
+/**
+ * Calculate API call cost for a given service mode
+ * Used by orchestrator to check quota BEFORE dispatching to service
+ *
+ * @param {string} mode - Service mode: "ebook", "poetry", "blog", etc.
+ * @param {Object} metadata - Service metadata (pageCount, wordCount, etc.)
+ * @returns {number} Number of API calls required
+ */
+function calculateCostForMode(mode, metadata = {}) {
+  const PAGES_PER_CALL = 2; // Ebook: 2 pages per Gemini call (typical)
+  const WORDS_PER_CALL = 500; // Blog: 500 words per Gemini call
+
+  if (mode === "ebook") {
+    const pageCount = metadata.pageCount || 10;
+    // +1 for structure call, then divide pages by PAGES_PER_CALL
+    // Example: 10 pages → 1 structure + 10/2 chapters = 1 + 5 = 6 calls
+    return 1 + Math.ceil(pageCount / PAGES_PER_CALL);
+  }
+
+  if (mode === "poetry") {
+    // Single call for poem generation
+    return 1;
+  }
+
+  if (mode === "blog") {
+    const wordCount = metadata.wordCount || 2000;
+    // Blog posts: estimate calls based on word count
+    return Math.ceil(wordCount / WORDS_PER_CALL);
+  }
+
+  if (mode === "custom") {
+    // Custom services can provide explicit cost
+    return metadata.estimatedCost || 1;
+  }
+
+  // Default: assume 1 call
+  return 1;
+}
+
+/**
+ * Get call requirements for a given service mode.
+ * Returns semantic description of which calls need special handling.
+ *
+ * @param {string} mode - Service mode: 'ebook', 'poetry', 'blog', etc.
+ * @param {object} metadata - Service metadata with pageCount, etc.
+ * @returns {object} Requirements object with calls array
+ */
+function getCallRequirements(mode, metadata = {}) {
+  const { pageCount = 8 } = metadata;
+
+  // NAT-CONT_0 (Narrative Continuity) for ebook mode
+  // Structure: structure(0) + opening(1) + content(2..pageCount-1) + closing(pageCount)
+  if (mode === "ebook") {
+    return {
+      mode: "ebook",
+      strategy: "nat-cont_0",
+      pageCount,
+      calls: [
+        {
+          callIndex: 0,
+          role: "structure",
+          tier: "expert",
+          description: "Generate ebook structure and TOC",
+        },
+        {
+          callIndex: 1,
+          role: "opening",
+          tier: "expert",
+          description: "Generate opening chapter with narrative voice",
+        },
+        // Middle chapters (callIndex 2 to pageCount-1)
+        {
+          callIndex: "2..pageCount-1",
+          role: "content",
+          tier: "standard",
+          count: pageCount - 2,
+          description: "Generate middle chapter content",
+        },
+        {
+          callIndex: pageCount,
+          role: "closing",
+          tier: "expert",
+          description: "Generate closing chapter with narrative closure",
+        },
+      ],
+    };
+  }
+
+  // Default for non-ebook modes
+  return {
+    mode,
+    strategy: "default",
+    pageCount,
+    calls: [], // Empty = use default callIndex-based routing
+  };
+}
+
+/**
+ * Calculate quota cost from call requirements based on tiers.
+ *
+ * For NAT-CONT_0:
+ *   Expert tier calls: structure(1) + opening(1) + closing(1) = 3
+ *   Standard tier calls: middle chapters = pageCount - 2
+ *
+ * For others (default routing):
+ *   Expert tier calls: structure only = 1
+ *   Standard tier calls: chapters = ceil(pageCount / 2)
+ *
+ * @param {object} requirements - Output from getCallRequirements()
+ * @returns {object} Cost object { pro: number, flash: number }
+ */
+function calculateCostFromRequirements(requirements) {
+  const { mode, strategy, pageCount, calls } = requirements;
+
+  // If no special calls defined, use default calculation
+  if (!calls || calls.length === 0) {
+    return {
+      pro: 1, // structure only
+      flash: Math.ceil(pageCount / 2), // chapters
+    };
+  }
+
+  // Count expert and standard tier calls from requirements
+  let expertCalls = 0;
+  let standardCalls = 0;
+
+  for (const call of calls) {
+    if (call.tier === "expert") {
+      if (call.callIndex === "2..pageCount-1") {
+        // Range (should never be expert)
+        standardCalls += call.count;
+      } else {
+        expertCalls += 1;
+      }
+    } else if (call.tier === "standard") {
+      if (call.callIndex === "2..pageCount-1") {
+        standardCalls += call.count;
+      } else {
+        standardCalls += 1;
+      }
+    }
+  }
+
+  return {
+    pro: expertCalls,
+    flash: standardCalls,
+  };
+}
+
+/**
+ * Build routing map from call requirements using tier configuration.
+ * Maps callIndex to actual model name based on tier abstraction.
+ *
+ * @param {object} requirements - Output from getCallRequirements()
+ * @param {object} modelTiers - Tier config { expert: string, standard: string }
+ * @returns {object} Routing map: { callIndex: model, ... }
+ */
+function buildRoutingMap(requirements, modelTiers) {
+  const { calls, pageCount } = requirements;
+  const routingMap = {};
+
+  // If no special calls, return empty map (aiService uses defaults)
+  if (!calls || calls.length === 0) {
+    return routingMap;
+  }
+
+  // Build map from requirements using tier configuration
+  for (const call of calls) {
+    // Determine model from tier config (not hardcoded)
+    const model =
+      call.tier === "expert" ? modelTiers.expert : modelTiers.standard;
+
+    if (call.callIndex === "2..pageCount-1") {
+      // Range: map all indices in range
+      for (let i = 2; i < pageCount; i++) {
+        routingMap[i] = model;
+      }
+    } else {
+      // Single index
+      routingMap[call.callIndex] = model;
+    }
+  }
+
+  return routingMap;
+}
+
 const genieService = {
   // For the demo, generate delegates to sampleService. In future this can
   // orchestrate real AI/image jobs via aetherService.
@@ -111,91 +297,21 @@ const genieService = {
     if (AWAIT_PERSISTENCE) await savePromise;
 
     // If persistence/lookup is enabled, attempt a read-only DB lookup first.
+    // Use helper to keep logic shareable with process() idempotency path.
     if (ENABLE_PERSISTENCE) {
       try {
-        let dbUtils;
-        // Debug: record which persistence implementation we'll use
-        // eslint-disable-next-line no-console
-        console.debug("genieService: selecting persistence implementation", {
-          injected: typeof _injectedDbUtils !== "undefined",
-          nodeEnv: process.env.NODE_ENV,
-        });
-        try {
-          dbUtils =
-            typeof _injectedDbUtils !== "undefined"
-              ? _injectedDbUtils
-              : require("./utils/dbUtils");
-        } catch (e) {
-          // If Prisma-backed dbUtils is not available (dev/test without
-          // prisma generate), fall back to legacy sqlite `crud` to keep
-          // runtime/tests stable. This preserves non-fatal persistence
-          // semantics while migrations/Prisma rollout completes.
-          // eslint-disable-next-line no-console
-          console.warn(
-            "genieService: dbUtils unavailable, falling back to legacy crud",
-            e && e.message
-          );
-          try {
-            dbUtils = require("./crud");
-          } catch (err2) {
-            // Re-throw original error if fallback also unavailable
-            throw e;
-          }
-        }
-        const norm = normalizePrompt(prompt);
-        // Try to find a prompt with matching normalized text. dbUtils.getPrompts
-        // returns recent prompts; keep this read-only and non-fatal.
-        const prompts = await dbUtils.getPrompts();
-        const match = (prompts || []).find((p) => {
-          try {
-            return (
-              typeof p.prompt === "string" && normalizePrompt(p.prompt) === norm
-            );
-          } catch (e) {
-            return false;
-          }
-        });
-
-        if (match && match.id) {
-          // Load latest AI result for this prompt id.
-          try {
-            // Prefer direct AI result lookup when available
-            const aiRow = await dbUtils
-              .getAIResultById(match.id)
-              .catch(() => null);
-            if (aiRow && aiRow.result) {
-              const resultObj =
-                typeof aiRow.result === "string"
-                  ? JSON.parse(aiRow.result)
-                  : aiRow.result;
-              // Ensure cached results follow the same envelope shape as
-              // freshly-generated results: always include content.layout
-              // and a metadata object so callers/tests can rely on the
-              // contract.
-              const content = resultObj.content || resultObj || {};
-              if (!content.layout) content.layout = "poem-single-column";
-              const metadata = resultObj.metadata || {
-                model: "cached-1",
-                tokens: Math.max(
-                  10,
-                  Math.min(200, String(match.prompt || "").length)
-                ),
-              };
-
-              return {
-                success: true,
-                data: {
-                  content,
-                  copies: resultObj.copies || [],
-                  metadata,
-                  promptId: match.id,
-                  resultId: aiRow.id,
-                },
-              };
-            }
-          } catch (e) {
-            // non-fatal; fall through to generation
-          }
+        const persisted = await this.findPersistedByPrompt(prompt);
+        if (persisted) {
+          return {
+            success: true,
+            data: {
+              content: persisted.content,
+              copies: persisted.copies || [],
+              metadata: persisted.metadata,
+              promptId: persisted.promptId,
+              resultId: persisted.resultId,
+            },
+          };
         }
       } catch (e) {
         // Non-fatal: log and fall back to generation
@@ -439,6 +555,72 @@ const genieService = {
   },
 
   /**
+   * Find persisted result by normalized prompt text.
+   * Returns { content, metadata, promptId, resultId, copies } or null.
+   * This encapsulates the read-first lookup used by `generate()` and
+   * enables `process()` to short-circuit and avoid consuming quota when a
+   * prior result already exists for the same normalized prompt.
+   */
+  async findPersistedByPrompt(prompt) {
+    try {
+      let dbUtils;
+      if (typeof _injectedDbUtils !== "undefined") dbUtils = _injectedDbUtils;
+      else {
+        try {
+          dbUtils = require("./utils/dbUtils");
+        } catch (e) {
+          // Fallback to legacy crud
+          dbUtils = require("./crud");
+        }
+      }
+
+      const norm = normalizePrompt(prompt);
+      const prompts = await dbUtils.getPrompts();
+      const match = (prompts || []).find((p) => {
+        try {
+          return (
+            typeof p.prompt === "string" && normalizePrompt(p.prompt) === norm
+          );
+        } catch (e) {
+          return false;
+        }
+      });
+
+      if (match && match.id) {
+        const aiRow = await dbUtils.getAIResultById(match.id).catch(() => null);
+        if (aiRow && aiRow.result) {
+          const resultObj =
+            typeof aiRow.result === "string"
+              ? JSON.parse(aiRow.result)
+              : aiRow.result;
+          const content = resultObj.content || resultObj || {};
+          if (!content.layout) content.layout = "poem-single-column";
+          const metadata = resultObj.metadata || {
+            model: "cached-1",
+            tokens: Math.max(
+              10,
+              Math.min(200, String(match.prompt || "").length)
+            ),
+          };
+          return {
+            content,
+            metadata,
+            promptId: match.id,
+            resultId: aiRow.id,
+            copies: resultObj.copies || [],
+            pages: content.pages || [],
+          };
+        }
+      }
+    } catch (e) {
+      // Non-fatal; caller will fall back
+      // eslint-disable-next-line no-console
+      console.warn("genieService.findPersistedByPrompt failed", e && e.message);
+    }
+    return null;
+  },
+
+  /**
    * Export content or a generated prompt to a PDF buffer
    *
    * Orchestration strategy (in priority order):
@@ -648,132 +830,295 @@ const genieService = {
     const resultDb = require("./utils/resultDb");
 
     try {
-      let result;
-      let classification = null;
-
-      // NEW: Phase A-B - Extract classification if provided or auto-generate
-      // Priority: provided classification > auto-classify flag > auto-mode
-      if (payload._classification) {
-        // Use provided classification (from POST /api/generate)
-        classification = payload._classification;
-      } else if (!mode || mode === "auto") {
-        // Auto-classify when no mode provided or mode is "auto"
-        classification = await this.classifyPrompt(prompt);
-        mode = classification.medium; // Use detected medium for routing
-      } else if (payload._classify === true) {
-        // Explicit classification flag for testing
-        classification = await this.classifyPrompt(prompt);
-      }
-
-      // 1. Route by mode to appropriate service handler
-      switch (mode) {
-        case "demo": {
-          const demoService = require("./demoService");
-          result = await demoService.handle(payload, classification);
-          break;
-        }
-        case "ebook": {
-          const ebookService = require("./ebookService");
-          result = await ebookService.handle(payload, classification);
-          // WEEK 1 FIX: Generate HTML from structured data
-          console.log("[COMPOSE] Starting compose() call for ebook mode");
-          try {
-            const html = await this.compose(result);
-            result.html = html; // Include HTML in result
-            console.log(
-              "[COMPOSE] Success! Generated HTML length:",
-              result.html?.length || "NULL"
-            );
-            if (!result.html || result.html.length === 0) {
-              console.warn("[COMPOSE] WARNING: HTML is empty or null");
-            }
-          } catch (err) {
-            console.error("[COMPOSE] FAILED:", err?.message, err?.stack);
-            result.html = null; // Graceful degradation
+      // Idempotency short-circuit: if persistence enabled and a prior result
+      // exists for this normalized prompt, return it immediately and avoid
+      // consuming or reserving quota. This ensures retries/polling don't
+      // double-spend AI calls.
+      if (ENABLE_PERSISTENCE && prompt) {
+        try {
+          const persisted = await this.findPersistedByPrompt(prompt);
+          if (persisted) {
+            const pages =
+              persisted.pages && persisted.pages.length
+                ? persisted.pages
+                : persisted.copies || [];
+            const out_env = {
+              pages,
+              html: null,
+              metadata: {
+                ...persisted.metadata,
+                generated_at: new Date().toISOString(),
+                mode: mode || "ebook",
+              },
+              actions: {},
+            };
+            return { out_envelope: out_env, resultId: persisted.resultId };
           }
-          break;
-        }
-        case "basic":
-        default: {
-          result = await sampleService.handle(payload, classification);
+        } catch (e) {
+          // Non-fatal: continue to normal processing
+          // eslint-disable-next-line no-console
+          console.warn(
+            "genieService.process: persisted lookup failed",
+            e && e.message
+          );
         }
       }
+      // ✅ PLATFORM CONCERN: Quota check before ANY service dispatch
+      // This ensures consistent quota protection across all services
+      const quotaTracker = require("./utils/quotaTracker");
+      const cost = calculateCostForMode(mode, payload.metadata);
+      const status = quotaTracker.getStatus();
 
-      // 2. Build canonical response envelope with enriched metadata
-      const envelope = {
-        out_envelope: {
-          pages: result.pages || [],
-          html: result.html || null, // WEEK 1: Include composed HTML
-          metadata: {
-            // Service-generated fields
-            ...result.metadata,
-            // Orchestrator-added fields
-            generated_at: new Date().toISOString(),
-            mode: mode,
-            // NEW: Phase A-B - Include classification metadata
-            ...(classification && { classification }),
-          },
-          actions: result.actions || {},
-          // Include epilogue if provided by service (e.g., demo mode)
-          ...(result.epilogue && { epilogue: result.epilogue }),
-        },
-      };
+      console.log(
+        `[QUOTA] Checking quota for mode '${mode}': ` +
+          `cost=${cost}, available=${status.availableQuota}`
+      );
 
-      // 3. Persist result with unique UUID for retrieval
-      // Each generation gets a resultId that can be used to reference this result
-      // in export, preview, and other endpoints. This enables:
-      // - Reference-based export (client sends resultId, not content)
-      // - Async job queuing (jobs reference resultId, not full content)
-      // - Audit trail (all prompts/results stored by UUID)
-      const resultId = uuidv4();
-      try {
-        await resultDb.saveResult(resultId, envelope.out_envelope, mode);
-        envelope.resultId = resultId;
-      } catch (err) {
-        // Log but do not fail the request - persistence is best-effort
-        // eslint-disable-next-line no-console
-        console.warn(
-          "genieService.process: result persistence failed",
-          err?.message
+      // Check if sufficient quota available
+      if (status.availableQuota < cost) {
+        console.log(
+          `[QUOTA] Insufficient quota: need ${cost}, have ${status.availableQuota}`
         );
-        // Still include resultId in response for client reference (best-effort)
-        envelope.resultId = resultId;
+
+        // Throw deferral error (will be caught in index.js)
+        const err = new Error(
+          `Quota exhausted: need ${cost} calls, but only ${status.availableQuota} available`
+        );
+        err.status = 202; // Accepted, not processed yet
+        err.defer = true;
+        err.cost = cost;
+        err.availableQuota = status.availableQuota;
+        err.windowResetAtMs = status.windowResetAt;
+        throw err;
       }
 
-      // 4. Process actions from service (orchestrator responsibility)
-      // Actions allow services to express intent without handling side effects
-      if (result.actions) {
-        // Check for persist_prompt action
-        if (result.actions.persist_prompt === true) {
+      console.log(
+        `[QUOTA] Quota check passed: proceeding with service dispatch`
+      );
+
+      // Reserve the required quota for this job so it won't be taken by
+      // concurrent requests while this job is running. On failure we'll
+      // release the reservation.
+      const reserveResult = quotaTracker.reserve(cost);
+      if (!reserveResult || !reserveResult.success) {
+        console.log(
+          `[QUOTA] Reserve failed: ${reserveResult && reserveResult.reason}`
+        );
+        const err = new Error(
+          `Quota reservation failed: ${reserveResult && reserveResult.reason}`
+        );
+        err.status = 202;
+        err.defer = true;
+        throw err;
+      }
+
+      const reservationId = reserveResult && reserveResult.reservationId;
+      let envelope;
+      try {
+        let result;
+        let classification = null;
+
+        // NEW: Phase A-B - Extract classification if provided or auto-generate
+        // Priority: provided classification > auto-classify flag > auto-mode
+        if (payload._classification) {
+          // Use provided classification (from POST /api/generate)
+          classification = payload._classification;
+        } else if (!mode || mode === "auto") {
+          // Auto-classify when no mode provided or mode is "auto"
+          classification = await this.classifyPrompt(prompt);
+          mode = classification.medium; // Use detected medium for routing
+        } else if (payload._classify === true) {
+          // Explicit classification flag for testing
+          classification = await this.classifyPrompt(prompt);
+        }
+
+        // Prepare progress callback to update smartPoller during processing
+        const smartPoller = require("./utilities/smartPoller");
+        const progressCallback = (update = {}) => {
           try {
-            const { saveContentToFile } = require("./utils/fileUtils");
-            // Fire-and-forget: save prompt in background (non-blocking)
-            saveContentToFile(prompt).catch((err) => {
+            const rid = update.resultId || payload.resultId;
+            if (!rid) return;
+            const callsCompleted =
+              update.callsCompleted ?? update.calls_completed ?? 0;
+            const currentCall = update.currentCall ?? update.current_call ?? 0;
+            const totalCalls = update.totalCalls ?? update.total_calls ?? null;
+            const eta = typeof update.eta === "number" ? update.eta : undefined;
+
+            smartPoller.updateProgress(rid, {
+              callsCompleted,
+              currentCall,
+              totalCalls,
+              eta,
+            });
+          } catch (e) {
+            // swallow errors to avoid breaking service flow
+            console.warn("progressCallback error:", e && e.message);
+          }
+        };
+
+        // 1. Route by mode to appropriate service handler
+        switch (mode) {
+          case "demo": {
+            const demoService = require("./demoService");
+            result = await demoService.handle(payload, classification);
+            break;
+          }
+          case "ebook": {
+            const ebookService = require("./ebookService");
+            result = await ebookService.handle(payload, classification);
+            // WEEK 1 FIX: Generate HTML from structured data
+            console.log("[COMPOSE] Starting compose() call for ebook mode");
+            try {
+              const html = await this.compose(result);
+              result.html = html; // Include HTML in result
+              console.log(
+                "[COMPOSE] Success! Generated HTML length:",
+                result.html?.length || "NULL"
+              );
+              if (!result.html || result.html.length === 0) {
+                console.warn("[COMPOSE] WARNING: HTML is empty or null");
+              }
+            } catch (err) {
+              console.error("[COMPOSE] FAILED:", err?.message, err?.stack);
+              result.html = null; // Graceful degradation
+            }
+            break;
+          }
+          case "wall-art": {
+            const WallArtService = require("./services/wallArtService");
+            const wallArtService = new WallArtService();
+
+            // Create orchestrator with helpers
+            const Orchestrator = require("./orchestrator");
+            const helpers = require("./helpers");
+            const orchestrator = new Orchestrator(
+              payload.resultId || uuidv4(),
+              helpers
+            );
+
+            // Execute service with orchestrator context
+            result = await wallArtService.handle(payload, {
+              orchestrator,
+              onProgress: progressCallback,
+            });
+            break;
+          }
+          case "calendar": {
+            const CalendarService = require("./services/calendarService");
+            const calendarService = new CalendarService();
+
+            // Create orchestrator with helpers
+            const Orchestrator = require("./orchestrator");
+            const helpers = require("./helpers");
+            const orchestrator = new Orchestrator(
+              payload.resultId || uuidv4(),
+              helpers
+            );
+
+            // Execute service with orchestrator context
+            result = await calendarService.handle(payload, {
+              orchestrator,
+              onProgress: progressCallback,
+            });
+            break;
+          }
+          case "basic":
+          default: {
+            result = await sampleService.handle(payload, classification);
+          }
+        }
+
+        // 2. Build canonical response envelope with enriched metadata
+        envelope = {
+          out_envelope: {
+            pages: result.pages || [],
+            html: result.html || null, // WEEK 1: Include composed HTML
+            metadata: {
+              // Service-generated fields
+              ...result.metadata,
+              // Orchestrator-added fields
+              generated_at: new Date().toISOString(),
+              mode: mode,
+              // NEW: Phase A-B - Include classification metadata
+              ...(classification && { classification }),
+            },
+            actions: result.actions || {},
+            // Include epilogue if provided by service (e.g., demo mode)
+            ...(result.epilogue && { epilogue: result.epilogue }),
+          },
+        };
+
+        // 3. Persist result with unique UUID for retrieval
+        // Each generation gets a resultId that can be used to reference this result
+        // in export, preview, and other endpoints. This enables:
+        // - Reference-based export (client sends resultId, not content)
+        // - Async job queuing (jobs reference resultId, not full content)
+        // - Audit trail (all prompts/results stored by UUID)
+        const resultId = uuidv4();
+        try {
+          await resultDb.saveResult(resultId, envelope.out_envelope, mode);
+          envelope.resultId = resultId;
+        } catch (err) {
+          // Log but do not fail the request - persistence is best-effort
+          // eslint-disable-next-line no-console
+          console.warn(
+            "genieService.process: result persistence failed",
+            err?.message
+          );
+          // Still include resultId in response for client reference (best-effort)
+          envelope.resultId = resultId;
+        }
+
+        // 4. Process actions from service (orchestrator responsibility)
+        // Actions allow services to express intent without handling side effects
+        if (result.actions) {
+          // Check for persist_prompt action
+          if (result.actions.persist_prompt === true) {
+            try {
+              const { saveContentToFile } = require("./utils/fileUtils");
+              // Fire-and-forget: save prompt in background (non-blocking)
+              saveContentToFile(prompt).catch((err) => {
+                // Log but do not fail the request
+                // eslint-disable-next-line no-console
+                console.warn(
+                  "genieService.process: persist_prompt action failed",
+                  err?.message
+                );
+              });
+            } catch (e) {
               // Log but do not fail the request
               // eslint-disable-next-line no-console
               console.warn(
-                "genieService.process: persist_prompt action failed",
-                err?.message
+                "genieService.process: Could not process persist_prompt action",
+                e?.message
               );
-            });
+            }
+          }
+
+          // Other actions can be added here as needed:
+          // if (result.actions.send_notification) { ... }
+          // if (result.actions.trigger_webhook) { ... }
+        }
+      } finally {
+        if (reservationId) {
+          try {
+            const rel = quotaTracker.releaseReservation(reservationId);
+            console.log("[QUOTA] reservation released:", rel);
           } catch (e) {
-            // Log but do not fail the request
-            // eslint-disable-next-line no-console
             console.warn(
-              "genieService.process: Could not process persist_prompt action",
-              e?.message
+              "[QUOTA] failed to release reservation",
+              e && e.message
             );
           }
         }
-
-        // Other actions can be added here as needed:
-        // if (result.actions.send_notification) { ... }
-        // if (result.actions.trigger_webhook) { ... }
       }
 
       return envelope;
     } catch (error) {
-      throw new Error(`Generation failed: ${error.message}`);
+      const e = new Error(`Generation failed: ${error.message}`);
+      if (error && error.status) e.status = error.status;
+      if (error && error.defer) e.defer = error.defer;
+      throw e;
     }
   },
 
@@ -1293,7 +1638,13 @@ const genieService = {
   },
 };
 
-module.exports = genieService;
+module.exports = {
+  ...genieService,
+  calculateCostForMode,
+  getCallRequirements,
+  calculateCostFromRequirements,
+  buildRoutingMap,
+};
 
 // Test helpers: allow injecting a mock dbUtils or sample service for unit tests
 let _injectedDbUtils;
