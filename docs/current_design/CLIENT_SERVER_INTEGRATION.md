@@ -1551,6 +1551,19 @@ A: Once quota window resets, any queued requests behind quota limit can proceed.
 
 ---
 
-**Document Status:** Pattern-Based Current (December 29, 2025)  
+## Related Documentation
+
+| Document                                                                     | Purpose                                                              | For Whom                                  |
+| ---------------------------------------------------------------------------- | -------------------------------------------------------------------- | ----------------------------------------- |
+| [ARCHITECTURE_PATTERNS_GUIDE.md](ARCHITECTURE_PATTERNS_GUIDE.md)             | Foundational pattern reference with code examples                    | All developers                            |
+| [ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md)                         | System-level overview, pattern mapping to components                 | Architects, new team members              |
+| [BACKEND_ARCHITECTURE.md](BACKEND_ARCHITECTURE.md)                           | Implementation of Patterns 2, 3, 4 (services, orchestrator, helpers) | Backend engineers                         |
+| [FRONTEND_ARCHITECTURE.md](FRONTEND_ARCHITECTURE.md)                         | Implementation of Patterns 1, 5 (acceptance, polling, ETA)           | Frontend engineers                        |
+| **[CLIENT_SERVER_INTEGRATION.md](CLIENT_SERVER_INTEGRATION.md)** (this file) | HTTP contracts, complete request/response lifecycle                  | Full-stack engineers, integration testing |
+
+---
+
+**Document Status:** Client-Server Integration (December 29, 2025)  
 **Completeness:** 100%  
-**Validation:** Production tested with Light_3-page_AN.md (52.871s execution, all patterns verified)
+**Validation:** Production tested with Light_3-page_AN.md (52.871s execution, all patterns verified)  
+**Related Documentation:** [ARCHITECTURE_PATTERNS_GUIDE.md](ARCHITECTURE_PATTERNS_GUIDE.md), [ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md), [BACKEND_ARCHITECTURE.md](BACKEND_ARCHITECTURE.md), [FRONTEND_ARCHITECTURE.md](FRONTEND_ARCHITECTURE.md)

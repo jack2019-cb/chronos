@@ -9,6 +9,18 @@
 
 ---
 
+## Quick Navigation
+
+| Document                                                             | Purpose                                                              | For Whom                                  |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------- | ----------------------------------------- |
+| [ARCHITECTURE_PATTERNS_GUIDE.md](ARCHITECTURE_PATTERNS_GUIDE.md)     | Foundational pattern reference with code examples                    | All developers                            |
+| **[ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md)** (this file) | System-level overview, pattern mapping to components                 | Architects, new team members              |
+| [BACKEND_ARCHITECTURE.md](BACKEND_ARCHITECTURE.md)                   | Implementation of Patterns 2, 3, 4 (services, orchestrator, helpers) | Backend engineers                         |
+| [FRONTEND_ARCHITECTURE.md](FRONTEND_ARCHITECTURE.md)                 | Implementation of Patterns 1, 5 (acceptance, polling, ETA)           | Frontend engineers                        |
+| [CLIENT_SERVER_INTEGRATION.md](CLIENT_SERVER_INTEGRATION.md)         | HTTP contracts, complete request/response lifecycle                  | Full-stack engineers, integration testing |
+
+---
+
 ## System Goals
 
 AetherPress is a **web-based async media generation platform** that transforms user prompts into structured, formatted digital content with **zero timeout risk**.
@@ -401,6 +413,15 @@ T=60s    Client receives result, displays in UI
 
 ---
 
+## Next Steps
+
+- **For Pattern Foundations**: Read [ARCHITECTURE_PATTERNS_GUIDE.md](ARCHITECTURE_PATTERNS_GUIDE.md) for detailed explanation of each pattern
+- **For Backend Implementation**: Read [BACKEND_ARCHITECTURE.md](BACKEND_ARCHITECTURE.md) to see how Patterns 2, 3, 4 are implemented
+- **For Frontend Implementation**: Read [FRONTEND_ARCHITECTURE.md](FRONTEND_ARCHITECTURE.md) to see how Patterns 1, 5 are implemented
+- **For HTTP Contracts**: Read [CLIENT_SERVER_INTEGRATION.md](CLIENT_SERVER_INTEGRATION.md) to understand request/response lifecycle
+
+---
+
 ## Historic Reference
 
 For context on how the system evolved:
@@ -408,7 +429,10 @@ For context on how the system evolved:
 - [ARCHITECTURE_OVERVIEW_REF.md](ARCHITECTURE_OVERVIEW_REF.md) - Original Dec 13 synchronous design
 - [ARCHITECTURE_PATTERNS_GUIDE.md](ARCHITECTURE_PATTERNS_GUIDE.md) - Introduction to 5 patterns
 
-For detailed pattern documentation:
+---
+
+**Document Status:** System Overview (December 29, 2025)  
+**Validation:** All patterns mapped and verified in production
 
 - [BACKEND_ARCHITECTURE.md](BACKEND_ARCHITECTURE.md) - Pattern 2, 3, 4 details
 - [FRONTEND_ARCHITECTURE.md](FRONTEND_ARCHITECTURE.md) - Pattern 1, 5 details

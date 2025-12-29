@@ -9,6 +9,18 @@
 
 ---
 
+## Navigation
+
+| Document                                                             | Purpose                                                              | For Whom                                  |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------- | ----------------------------------------- |
+| [ARCHITECTURE_PATTERNS_GUIDE.md](ARCHITECTURE_PATTERNS_GUIDE.md)     | Foundational pattern reference with code examples                    | All developers                            |
+| [ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md)                 | System-level overview, pattern mapping to components                 | Architects, new team members              |
+| [BACKEND_ARCHITECTURE.md](BACKEND_ARCHITECTURE.md)                   | Implementation of Patterns 2, 3, 4 (services, orchestrator, helpers) | Backend engineers                         |
+| **[FRONTEND_ARCHITECTURE.md](FRONTEND_ARCHITECTURE.md)** (this file) | Implementation of Patterns 1, 5 (acceptance, polling, ETA)           | Frontend engineers                        |
+| [CLIENT_SERVER_INTEGRATION.md](CLIENT_SERVER_INTEGRATION.md)         | HTTP contracts, complete request/response lifecycle                  | Full-stack engineers, integration testing |
+
+---
+
 ## Quick Navigation
 
 - **For Pattern 1 (PART-A)**: Jump to [Async Request Handling](#pattern-1-async-request-handling)
@@ -894,9 +906,26 @@ Triggers PDF download of final result
 
 ---
 
+## Next Steps
+
+- **For Pattern Overview**: Read [ARCHITECTURE_PATTERNS_GUIDE.md](ARCHITECTURE_PATTERNS_GUIDE.md) for foundational understanding of all 5 patterns
+- **For Backend Implementation**: Read [BACKEND_ARCHITECTURE.md](BACKEND_ARCHITECTURE.md) to see how server orchestrates execution
+- **For HTTP Contracts**: Read [CLIENT_SERVER_INTEGRATION.md](CLIENT_SERVER_INTEGRATION.md) to understand detailed request/response lifecycle and error handling
+- **For System Overview**: Read [ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md) to see how frontend architecture maps to overall system
+
+---
+
 ## Historic Reference
 
 For context on how the frontend evolved:
+
+- [FRONTEND_ARCHITECTURE_REF.md](FRONTEND_ARCHITECTURE_REF.md) - Original Dec 13 frontend design
+
+---
+
+**Document Status:** Frontend Architecture (December 29, 2025)  
+**Patterns Covered:** Pattern 1 (PART-A Async Acceptance), Pattern 5 (Smart Polling & ETA)  
+**Validation:** Production tested with Light_3-page_AN.md (202 response 1.627ms, polling completes in 54s)
 
 - [FRONTEND_ARCHITECTURE_REF.md](FRONTEND_ARCHITECTURE_REF.md) - Original Dec 13 synchronous design
 

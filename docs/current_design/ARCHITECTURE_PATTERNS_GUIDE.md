@@ -12,6 +12,20 @@
 
 ---
 
+## Quick Navigation
+
+| Document | Purpose | For Whom |
+|----------|---------|----------|
+| **[ARCHITECTURE_PATTERNS_GUIDE.md](ARCHITECTURE_PATTERNS_GUIDE.md)** (this file) | Foundational pattern reference with code examples | All developers |
+| [ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md) | System-level overview, pattern mapping to components | Architects, new team members |
+| [BACKEND_ARCHITECTURE.md](BACKEND_ARCHITECTURE.md) | Implementation of Patterns 2, 3, 4 (services, orchestrator, helpers) | Backend engineers |
+| [FRONTEND_ARCHITECTURE.md](FRONTEND_ARCHITECTURE.md) | Implementation of Patterns 1, 5 (acceptance, polling, ETA) | Frontend engineers |
+| [CLIENT_SERVER_INTEGRATION.md](CLIENT_SERVER_INTEGRATION.md) | HTTP contracts, complete request/response lifecycle | Full-stack engineers, integration testing |
+
+**Also See**: [ARCHITECTURE_OVERVIEW_REF.md](ARCHITECTURE_OVERVIEW_REF.md), [BACKEND_ARCHITECTURE_REF.md](BACKEND_ARCHITECTURE_REF.md), [FRONTEND_ARCHITECTURE_REF.md](FRONTEND_ARCHITECTURE_REF.md), [CLIENT_SERVER_INTEGRATION_REF.md](CLIENT_SERVER_INTEGRATION_REF.md) for historic reference material (old synchronous architecture)
+
+---
+
 ## Overview
 
 AetherPress solves the critical **60-second infrastructure timeout problem** through 5 interconnected architectural patterns that work together as a unified system. This guide introduces each pattern and shows how they interconnect.
@@ -459,6 +473,17 @@ For deep dives into each pattern, see:
 
 ---
 
+## Next Steps
+
+- **For Architecture Overview**: Read [ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md) to see how patterns map to system components
+- **For Backend Details**: Read [BACKEND_ARCHITECTURE.md](BACKEND_ARCHITECTURE.md) to understand Patterns 2, 3, 4 implementation
+- **For Frontend Details**: Read [FRONTEND_ARCHITECTURE.md](FRONTEND_ARCHITECTURE.md) to understand Patterns 1, 5 implementation  
+- **For Integration**: Read [CLIENT_SERVER_INTEGRATION.md](CLIENT_SERVER_INTEGRATION.md) to see complete request/response lifecycle
+
+---
+
+**Document Status:** Active Architecture Guide (December 29, 2025)  
+**Validation:** All 5 patterns confirmed in production (Light_3-page_AN.md)
 ## Key Takeaways
 
 1. **No more timeouts**: Pattern 1 breaks the synchronous blocking problem

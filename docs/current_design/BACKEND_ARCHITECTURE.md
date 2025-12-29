@@ -9,6 +9,18 @@
 
 ---
 
+## Navigation
+
+| Document                                                           | Purpose                                                              | For Whom                                  |
+| ------------------------------------------------------------------ | -------------------------------------------------------------------- | ----------------------------------------- |
+| [ARCHITECTURE_PATTERNS_GUIDE.md](ARCHITECTURE_PATTERNS_GUIDE.md)   | Foundational pattern reference with code examples                    | All developers                            |
+| [ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md)               | System-level overview, pattern mapping to components                 | Architects, new team members              |
+| **[BACKEND_ARCHITECTURE.md](BACKEND_ARCHITECTURE.md)** (this file) | Implementation of Patterns 2, 3, 4 (services, orchestrator, helpers) | Backend engineers                         |
+| [FRONTEND_ARCHITECTURE.md](FRONTEND_ARCHITECTURE.md)               | Implementation of Patterns 1, 5 (acceptance, polling, ETA)           | Frontend engineers                        |
+| [CLIENT_SERVER_INTEGRATION.md](CLIENT_SERVER_INTEGRATION.md)       | HTTP contracts, complete request/response lifecycle                  | Full-stack engineers, integration testing |
+
+---
+
 ## Quick Navigation
 
 - **For Pattern 2 (SERVICE_MACHINE)**: Jump to [Service Autonomy](#service-autonomy-pattern-2)
@@ -790,9 +802,26 @@ const job = await prisma.ebook.findUnique({
 
 ---
 
+## Next Steps
+
+- **For Pattern Overview**: Read [ARCHITECTURE_PATTERNS_GUIDE.md](ARCHITECTURE_PATTERNS_GUIDE.md) for foundational understanding of all 5 patterns
+- **For Frontend Implementation**: Read [FRONTEND_ARCHITECTURE.md](FRONTEND_ARCHITECTURE.md) to see how frontend uses Patterns 1 and 5
+- **For HTTP Contracts**: Read [CLIENT_SERVER_INTEGRATION.md](CLIENT_SERVER_INTEGRATION.md) to see backend integration from request/response perspective
+- **For System Overview**: Read [ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md) to see how backend architecture maps to overall system
+
+---
+
 ## Historic Reference
 
 For context on how the backend evolved:
+
+- [BACKEND_ARCHITECTURE_REF.md](BACKEND_ARCHITECTURE_REF.md) - Original Dec 14 backend design
+
+---
+
+**Document Status:** Backend Architecture (December 29, 2025)  
+**Patterns Covered:** Pattern 2 (SERVICE_MACHINE), Pattern 3 (PART-B Orchestrator), Pattern 4 (Helpers & Utilities)  
+**Validation:** Production tested with Light_3-page_AN.md (52.871s execution)
 
 - [BACKEND_ARCHITECTURE_REF.md](BACKEND_ARCHITECTURE_REF.md) - Original Dec 14 synchronous design
 - See [ARCHITECTURE_PATTERNS_GUIDE.md](ARCHITECTURE_PATTERNS_GUIDE.md) for pattern overview
