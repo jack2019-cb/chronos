@@ -19,17 +19,15 @@ This document captures the issue, the chosen solution (aligned with the 3-page w
 ## Chosen Solution (summary)
 
 - Enforce per-model constraints using two orthogonal mechanisms:
-  1. Long-window quota enforcement (sliding-window or token-bucket semantics). This prevents long-run quota violations (e.g., provider daily/minute limits).
-
-2.  Short cooldown (rapid-fire) smoothing: a small, empirically tuned cooldown (e.g., 250ms for Pro/expert, 100ms for Flash/standard) applied to same-model consecutive calls to avoid transient 429s.
+  1. Long-window quota enforcement (sliding-window or token-bucket semantics). This prevents long-run quota violations (e.g., provider daily/minute limits).2.  Short cooldown (rapid-fire) smoothing: a small, empirically tuned cooldown (e.g., 250ms for Pro/expert, 100ms for Flash/standard) applied to same-model consecutive calls to avoid transient 429s.
 
 - The scheduler helper computes a deterministic schedule (start/end times) and overall ETA from the manifest plus model configs. It returns both an authoritative ETA and a detailed breakdown used by downstream utilities (smartPoller, progress UI, telemetry, billing).
+
 - Model-switching does not inherently require a delay — only the destination model's constraints (tokens/next-available timestamp) matter.
 
 ## What the Helper Must Provide (contract)
 
 - Input:
-
   - `manifest`: ordered array of calls with `callIndex` and `tier`/`model`.
   - `now`: canonical server timestamp (ms epoch) or a pluggable clock.
   - `modelConfigs`: per-model config { durationMs, cooldownMs, quotaPerMin | tokenBucketParams }.
@@ -44,12 +42,12 @@ This document captures the issue, the chosen solution (aligned with the 3-page w
   - `totalCalls`
 
 Notes:
-
 - All timestamps should be absolute server times (epoch ms) to make downstream utilities deterministic and avoid client/server drift.
 
 ## Scheduling Algorithm (sequential FIFO)
 
 1. Set `prevEnd = now`.
+
 2. For each call in manifest (in order):
    - `baseStart = prevEnd`.
    - `quotaDelay` = earliest t ≥ `baseStart` that satisfies the model's quota (computed via sliding-window or token-bucket). If `mode === heuristicCooldown` and quota unknown, treat `quotaDelay = baseStart`.
@@ -59,6 +57,7 @@ Notes:
    - Update `modelNextAvailable[model] = start + cooldownMs(model)`.
    - Record `delayReason` from which constraint caused `start > baseStart`.
    - `prevEnd = end`.
+
 3. `etaMs = prevEnd - now`.
 
 Implementation may use a token-bucket for quota enforcement. For provider-supplied `Retry-After` on 429, update `modelNextAvailable[model] = now + retryAfterMs` and recompute schedule.
