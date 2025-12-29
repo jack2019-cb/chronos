@@ -1,7 +1,11 @@
-# AetherPress Architecture Overview
+# ⚠️ HISTORIC REFERENCE: AetherPress Architecture Overview (Dec 13, 2025)
 
-**Date**: December 13, 2025 @ 2:10PM
-**Scope**: Scope 1 - General System Overview  
+> **This is historic reference material describing the old synchronous architecture before pattern-based redesign.**  
+> **Current system uses async 202+polling pattern-based architecture.**  
+> See [ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md) for current pattern-based architecture.
+
+**Original Date**: December 13, 2025 @ 2:10PM  
+**Original Scope**: Scope 1 - General System Overview  
 **Target Audience**: Developers, maintainers, stakeholders  
 **Reading Time**: ~10-12 minutes
 

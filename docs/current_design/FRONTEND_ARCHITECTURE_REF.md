@@ -1,11 +1,15 @@
-# AetherPress Frontend Architecture
+# ⚠️ HISTORIC REFERENCE: AetherPress Frontend Architecture (Dec 13, 2025)
 
-**Date**: December 13, 2025 @ 4:45 PM  
-**Scope**: Scope 3 - Frontend Architecture  
+> **This is historic reference material describing the old synchronous frontend architecture before pattern-based redesign.**  
+> **Current system uses Pattern 5 smart polling with ETA management and zero client timeouts.**  
+> See [FRONTEND_ARCHITECTURE.md](FRONTEND_ARCHITECTURE.md) for current pattern-based frontend architecture.
+
+**Original Date**: December 13, 2025 @ 4:45 PM  
+**Original Scope**: Scope 3 - Frontend Architecture  
 **Target Audience**: Frontend developers, UI/UX designers, integration specialists  
 **Reading Time**: ~15-20 minutes
 
-**Related**: See [ARCHITECTURE_DOCUMENTATION_PROPOSAL.md](ARCHITECTURE_DOCUMENTATION_PROPOSAL.md) for documentation project overview, [CLIENT_SERVER_INTEGRATION.md](CLIENT_SERVER_INTEGRATION.md) for HTTP contracts and timeout behavior analysis
+**Related**: See [ARCHITECTURE_DOCUMENTATION_PROPOSAL.md](ARCHITECTURE_DOCUMENTATION_PROPOSAL.md) for documentation project overview, [CLIENT_SERVER_INTEGRATION_REF.md](CLIENT_SERVER_INTEGRATION_REF.md) for historic HTTP contracts and timeout behavior analysis
 
 ---
 

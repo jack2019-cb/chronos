@@ -1,10 +1,14 @@
-# CLIENT_SERVER_INTEGRATION.md
+# ⚠️ HISTORIC REFERENCE: CLIENT-SERVER INTEGRATION (Dec 15, 2025)
 
-## Scope 4: Client-Server Integration Documentation
+> **This is historic reference material describing the old synchronous client-server integration before pattern-based redesign.**  
+> **Current system uses 202 Accepted response pattern with async polling contract.**  
+> See [CLIENT_SERVER_INTEGRATION.md](CLIENT_SERVER_INTEGRATION.md) for current pattern-based integration.
 
-**Status:** Reverse-engineered from implementation  
-**Last Updated:** 2024  
-**Related Documentation:** [ARCHITECTURE_DOCUMENTATION_PROPOSAL.md](ARCHITECTURE_DOCUMENTATION_PROPOSAL.md), [BACKEND_ARCHITECTURE.md](BACKEND_ARCHITECTURE.md), [FRONTEND_ARCHITECTURE.md](FRONTEND_ARCHITECTURE.md)
+## Scope 4: Client-Server Integration Documentation (Historic)
+
+**Original Status:** Reverse-engineered from implementation  
+**Original Updated:** December 15, 2025  
+**Related Documentation:** [ARCHITECTURE_DOCUMENTATION_PROPOSAL.md](ARCHITECTURE_DOCUMENTATION_PROPOSAL.md), [BACKEND_ARCHITECTURE_REF.md](BACKEND_ARCHITECTURE_REF.md), [FRONTEND_ARCHITECTURE_REF.md](FRONTEND_ARCHITECTURE_REF.md)
 
 ---
 

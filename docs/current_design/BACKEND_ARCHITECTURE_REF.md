@@ -1,4 +1,13 @@
-# AetherPress Backend Architecture — NAT-CONT_0 (Clean)
+# ⚠️ HISTORIC REFERENCE: AetherPress Backend Architecture (Dec 14, 2025)
+
+> **This is historic reference material describing the old synchronous backend architecture before pattern-based redesign.**  
+> **Current system uses PART-B orchestrator pattern with manifest-driven execution.**  
+> See [BACKEND_ARCHITECTURE.md](BACKEND_ARCHITECTURE.md) for current pattern-based backend architecture.
+
+**Original Date**: December 14, 2025 @ 4:20 PM  
+**Original Scope**: Scope 2 - Backend Technical Specification  
+**Target Audience**: Backend developers, DevOps, maintainers  
+**Reading Time**: ~15-20 minutes
 
 ## Implementation-Based Deep Dive
 
