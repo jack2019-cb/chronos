@@ -3025,38 +3025,219 @@ app.post("/api/ebook/generate", async (req, res) => {
 });
 
 /**
+ * POST /api/wall-art/generate (PART-A: ASYNC ACCEPTANCE)
+ *
+ * PART-A accepts request and returns 202 immediately with resultId
+ * Backend execution happens asynchronously
+ * Client polls /api/status/:resultId for progress and completion
+ */
+app.post("/api/wall-art/generate", async (req, res) => {
+  const startTime = Date.now();
+  const { v4: uuidv4 } = require("uuid");
+
+  // Set a long timeout for HTTP handler setup (but not for actual generation)
+  req.setTimeout(600000); // 10 minutes for HTTP
+  res.setTimeout(600000); // 10 minutes for HTTP
+
+  const { prompt, style = "minimalist", dimensions = "3x4" } = req.body;
+
+  // Input validation
+  if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
+    return res
+      .status(400)
+      .json({ error: "Prompt is required and must be a non-empty string" });
+  }
+
+  // ==================== PART-A: ASYNC ACCEPTANCE ====================
+
+  // Generate resultId for tracking
+  const resultId = uuidv4();
+  const smartPoller = require("./utilities/smartPoller");
+
+  // Initialize status in smartPoller
+  smartPoller.assignTask(resultId, {
+    eta: null, // Will be computed by orchestrator
+    totalCalls: null, // Will be computed from manifest
+  });
+
+  console.log(
+    `[${new Date().toISOString()}] [PART-A] Wall-art job accepted: ${resultId}`
+  );
+
+  // Return 202 Accepted immediately (< 100ms)
+  res.status(202).json({
+    resultId,
+    status: "queued",
+    message:
+      "Your wall art request is queued. Check status at /api/status/" +
+      resultId,
+  });
+
+  // ==================== PART-B: ASYNC EXECUTION ====================
+
+  // Hand off asynchronously (no waiting)
+  genieService
+    .process({
+      resultId, // Pass resultId so orchestrator/service can enrich status
+      mode: "wall-art",
+      prompt,
+      style,
+      dimensions,
+    })
+    .then((result) => {
+      // Success: mark complete in smartPoller
+      smartPoller.markComplete(resultId, result);
+      console.log(
+        `[${new Date().toISOString()}] [PART-B] Wall-art job completed: ${resultId}`
+      );
+    })
+    .catch((err) => {
+      // Error: mark error in smartPoller
+      smartPoller.markError(resultId, {
+        message: err?.message || "Unknown error",
+        code: err?.code || "GENERATION_ERROR",
+        stack: err?.stack,
+      });
+      console.error(
+        `[${new Date().toISOString()}] [PART-B] Wall-art job failed: ${resultId}`,
+        err
+      );
+    });
+});
+
+/**
+ * POST /api/calendar/generate (PART-A: ASYNC ACCEPTANCE)
+ *
+ * PART-A accepts request and returns 202 immediately with resultId
+ * Backend execution happens asynchronously
+ * Client polls /api/status/:resultId for progress and completion
+ */
+app.post("/api/calendar/generate", async (req, res) => {
+  const startTime = Date.now();
+  const { v4: uuidv4 } = require("uuid");
+
+  // Set a long timeout for HTTP handler setup (but not for actual generation)
+  req.setTimeout(600000); // 10 minutes for HTTP
+  res.setTimeout(600000); // 10 minutes for HTTP
+
+  const { prompt, year = 2025, theme = "modern" } = req.body;
+
+  // Input validation
+  if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
+    return res
+      .status(400)
+      .json({ error: "Prompt is required and must be a non-empty string" });
+  }
+
+  // ==================== PART-A: ASYNC ACCEPTANCE ====================
+
+  // Generate resultId for tracking
+  const resultId = uuidv4();
+  const smartPoller = require("./utilities/smartPoller");
+
+  // Initialize status in smartPoller
+  smartPoller.assignTask(resultId, {
+    eta: null, // Will be computed by orchestrator
+    totalCalls: null, // Will be computed from manifest
+  });
+
+  console.log(
+    `[${new Date().toISOString()}] [PART-A] Calendar job accepted: ${resultId}`
+  );
+
+  // Return 202 Accepted immediately (< 100ms)
+  res.status(202).json({
+    resultId,
+    status: "queued",
+    message:
+      "Your calendar request is queued. Check status at /api/status/" +
+      resultId,
+  });
+
+  // ==================== PART-B: ASYNC EXECUTION ====================
+
+  // Hand off asynchronously (no waiting)
+  genieService
+    .process({
+      resultId, // Pass resultId so orchestrator/service can enrich status
+      mode: "calendar",
+      prompt,
+      year,
+      theme,
+    })
+    .then((result) => {
+      // Success: mark complete in smartPoller
+      smartPoller.markComplete(resultId, result);
+      console.log(
+        `[${new Date().toISOString()}] [PART-B] Calendar job completed: ${resultId}`
+      );
+    })
+    .catch((err) => {
+      // Error: mark error in smartPoller
+      smartPoller.markError(resultId, {
+        message: err?.message || "Unknown error",
+        code: err?.code || "GENERATION_ERROR",
+        stack: err?.stack,
+      });
+      console.error(
+        `[${new Date().toISOString()}] [PART-B] Calendar job failed: ${resultId}`,
+        err
+      );
+    });
+});
+
+/**
  * GET /api/status/:resultId (STATUS POLLING ENDPOINT)
  *
  * Returns current status of a generation job
  * Enables client polling without blocking
  */
 app.get("/api/status/:resultId", async (req, res) => {
-  const { resultId } = req.params;
-  const smartPoller = require("./utilities/smartPoller");
-
   try {
-    const status = smartPoller.getStatus(resultId);
+    const { resultId } = req.params;
+    const smartPoller = require("./utilities/smartPoller");
 
-    if (!status) {
-      return res.status(404).json({
-        error: "Job not found",
-        resultId,
-      });
+    const taskStatus = smartPoller.getStatus(resultId);
+
+    // If job not found
+    if (!taskStatus) {
+      return res.status(404).json({ error: "Job not found", resultId });
     }
 
-    res.json({
+    // Build response with canonical fields
+    const response = {
       resultId,
-      ...status,
-    });
+      status: taskStatus.status || "in-progress",
+      eta:
+        typeof taskStatus.eta === "number"
+          ? taskStatus.eta
+          : taskStatus.eta || null,
+      calls_total: taskStatus.calls_total || 0,
+      calls_completed: taskStatus.calls_completed || 0,
+      progress_percent: taskStatus.progress_percent || 0,
+      message: taskStatus.message || `Job ${taskStatus.status}`,
+      result: taskStatus.result || null,
+    };
+
+    if (taskStatus.error) {
+      response.error = taskStatus.error;
+    }
+
+    if (taskStatus.startedAt) {
+      response.elapsed_seconds = Math.round(
+        (Date.now() - taskStatus.startedAt) / 1000
+      );
+      response.remaining_seconds = Math.max(
+        0,
+        (taskStatus.eta || 0) - response.elapsed_seconds
+      );
+    }
+
+    console.debug(`[status] ${resultId}: ${JSON.stringify(response)}`);
+    res.json(response);
   } catch (err) {
-    console.error(
-      `[${new Date().toISOString()}] Error fetching status for ${resultId}`,
-      err
-    );
-    res.status(500).json({
-      error: "Failed to fetch status",
-      resultId,
-    });
+    console.error("Status endpoint error:", err);
+    res.status(500).json({ error: "Server error" });
   }
 });
 

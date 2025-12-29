@@ -932,6 +932,30 @@ const genieService = {
           classification = await this.classifyPrompt(prompt);
         }
 
+        // Prepare progress callback to update smartPoller during processing
+        const smartPoller = require("./utilities/smartPoller");
+        const progressCallback = (update = {}) => {
+          try {
+            const rid = update.resultId || payload.resultId;
+            if (!rid) return;
+            const callsCompleted =
+              update.callsCompleted ?? update.calls_completed ?? 0;
+            const currentCall = update.currentCall ?? update.current_call ?? 0;
+            const totalCalls = update.totalCalls ?? update.total_calls ?? null;
+            const eta = typeof update.eta === "number" ? update.eta : undefined;
+
+            smartPoller.updateProgress(rid, {
+              callsCompleted,
+              currentCall,
+              totalCalls,
+              eta,
+            });
+          } catch (e) {
+            // swallow errors to avoid breaking service flow
+            console.warn("progressCallback error:", e && e.message);
+          }
+        };
+
         // 1. Route by mode to appropriate service handler
         switch (mode) {
           case "demo": {
@@ -958,6 +982,44 @@ const genieService = {
               console.error("[COMPOSE] FAILED:", err?.message, err?.stack);
               result.html = null; // Graceful degradation
             }
+            break;
+          }
+          case "wall-art": {
+            const WallArtService = require("./services/wallArtService");
+            const wallArtService = new WallArtService();
+
+            // Create orchestrator with helpers
+            const Orchestrator = require("./orchestrator");
+            const helpers = require("./helpers");
+            const orchestrator = new Orchestrator(
+              payload.resultId || uuidv4(),
+              helpers
+            );
+
+            // Execute service with orchestrator context
+            result = await wallArtService.handle(payload, {
+              orchestrator,
+              onProgress: progressCallback,
+            });
+            break;
+          }
+          case "calendar": {
+            const CalendarService = require("./services/calendarService");
+            const calendarService = new CalendarService();
+
+            // Create orchestrator with helpers
+            const Orchestrator = require("./orchestrator");
+            const helpers = require("./helpers");
+            const orchestrator = new Orchestrator(
+              payload.resultId || uuidv4(),
+              helpers
+            );
+
+            // Execute service with orchestrator context
+            result = await calendarService.handle(payload, {
+              orchestrator,
+              onProgress: progressCallback,
+            });
             break;
           }
           case "basic":
