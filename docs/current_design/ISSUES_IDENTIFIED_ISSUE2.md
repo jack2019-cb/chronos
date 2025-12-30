@@ -6,7 +6,8 @@
 
 **Issue**: #2 from ISSUES_IDENTIFIED.md  
 **Status**: Root Cause Analysis (Discussion & Verification Needed)  
-**Scope**: Frontend-backend semantic gap causing premature export call
+**Scope**: Frontend-backend semantic gap causing premature export call  
+**ADDENDUM**: [See bottom of document](#addendum-december-30-2025-1145pm) - Architecture review findings
 
 ---
 
@@ -500,3 +501,114 @@ Once fixed, we should verify:
 **Next Review**: After code investigation  
 **Owner**: Frontend + Backend team  
 **Stakeholders**: QA, Product team
+
+---
+
+## ADDENDUM: December 30, 2025 @ 4:15PM
+
+### Findings from BACKEND_ARCHITECTURE Review
+
+**Date**: December 30, 2025 @ 4:15PM  
+**Reviewed Against**: BACKEND_ARCHITECTURE.md, FRONTEND_ARCHITECTURE.md, CLIENT_SERVER_INTEGRATION.md  
+**Conclusion**: Original hypothesis is **speculative and contradicted by documented architecture**
+
+---
+
+### What the Architecture Actually Documents
+
+**Status Values** (definitive, from CLIENT_SERVER_INTEGRATION.md):
+
+```
+"queued"     - Waiting for rate-limit window or queue slot
+"processing" - Actively calling Gemini API for generation
+"composing"  - Rendering chapters to HTML (final phase)
+"complete"   - Generation done, result available
+```
+
+**Frontend Export Gating** (from FRONTEND_ARCHITECTURE.md):
+
+```javascript
+// SmartPoller explicitly checks:
+if (status.status === "COMPLETE") {
+  this.callbacks.onComplete(status);
+  // Then:
+  fetchAndDisplayResult(resultId);
+  flowStore.transitionTo("RESULT_READY");
+}
+
+// Export only enabled AFTER onComplete fires
+```
+
+---
+
+### Why the Original Hypothesis is Wrong
+
+**Original Claim**:
+> "Frontend is enabling the export button based on intermediate status states (e.g., 'composing'), not waiting for explicit job completion."
+
+**Architecture Reality**:
+1. Frontend polls `GET /api/ebook/status/:resultId` continuously
+2. Receives `status: "queued" | "processing" | "composing" | "complete"`
+3. **Only when** `status === "complete"` does SmartPoller call `onComplete()`
+4. Export button is only enabled AFTER job completion
+5. Cannot enable export during intermediate states
+
+**Conclusion**: The gating logic DOES exist and IS correct. Frontend cannot enable export mid-generation by design.
+
+---
+
+### What Actually Happened (From Light_3-page_02 Logs)
+
+```
+T=58s   [EBOOK] handle COMPLETE → 19,640 bytes HTML ✓
+T=58s   [SmartPoller] markComplete: job marked complete ✓
+T=59s   [EXPORT-EP] Using canonical envelope path
+T=59s   POST /export 400 2.780 ms ← Error occurs
+```
+
+**Timeline shows**: Export attempt happened IMMEDIATELY after job completion, not mid-generation.
+
+**Real Issue** (from Light_3-page_02_AN.md):
+- Backend returns response with `chapters` field (not `pages`)
+- Frontend transforms to `pages: ebookResult.chapters || []`
+- Export endpoint validates `Array.isArray(envelope.pages)`
+- **Root cause**: Field name mismatch or empty/malformed `pages` array when export called
+- NOT a timing/button-gating issue
+
+---
+
+### Architecture Verification Results
+
+| Component                  | Status | Finding                                          |
+| -------------------------- | ------ | ------------------------------------------------ |
+| **Status Values**          | ✓      | Correctly defined: queued→processing→composing→complete |
+| **Export Gating Logic**    | ✓      | Only enables on `status === "COMPLETE"`         |
+| **Polling Loop**           | ✓      | Properly waits for completion before onComplete  |
+| **Frontend Button State**  | ✓      | Documented to stay disabled during intermediate states |
+| **Button Enable Timing**   | ✓      | Occurs AFTER job completion, not before         |
+
+---
+
+### Revised Assessment
+
+**Original Hypothesis**: Frontend defensive programming failure ✗ **INCORRECT**
+
+**Actual Root Cause**: Data shape mismatch between generation response and export endpoint validation ✓ **VERIFIED**
+
+**Key Difference**:
+- Original hypothesis: Button enabled too early (timing issue)
+- Actual issue: Response field name mismatch (`chapters` vs `pages`) + possible empty array
+
+**Recommended Action**: 
+Instead of fixing button gating (already correct), investigate:
+1. Why `pages` array is empty/falsy when export is called
+2. Why `chapters` field name is used in response instead of `pages`
+3. Data transformation pipeline from generation to export
+
+---
+
+### Impact on ISSUES_IDENTIFIED_ISSUE2
+
+This document remains valuable as a **defensive programming exercise**, but the specific hypothesis is contradicted by architecture documentation. The export 400 error is NOT caused by premature button enabling—it's caused by the data shape mismatch identified in Light_3-page_02_AN.md.
+
+**Document Status Update**: From "Root Cause Analysis (Hypothesis)" → **"Hypothesis Disproven by Architecture Review; See Light_3-page_02_AN.md for actual root cause"**
