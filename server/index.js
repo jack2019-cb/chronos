@@ -3384,12 +3384,10 @@ app.post("/api/ebook/generate/sync-deprecated", async (req, res) => {
       envelope.metadata?.title ||
       "Generated E-book";
 
-    const responseObj = {
-      id: ebookId,
-      resultId: result.resultId,
-      chapters: envelope.pages,
-      html: envelope.html || null, // WEEK 1: Include composed HTML
-      title: actualTitle,
+    // Create canonical out_envelope matching export/orchestrator expectations
+    const outEnvelope = {
+      pages: envelope.pages,
+      html: envelope.html || null,
       metadata: {
         title: actualTitle,
         author: "Aether AI",
@@ -3408,6 +3406,19 @@ app.post("/api/ebook/generate/sync-deprecated", async (req, res) => {
         can_preview: true,
         can_override: true,
       },
+    };
+
+    // Wrap in response object with canonical out_envelope and legacy fields
+    const responseObj = {
+      id: ebookId,
+      resultId: result.resultId,
+      out_envelope: outEnvelope, // Canonical structure for export/orchestration
+      // Legacy fields for backwards compatibility
+      chapters: envelope.pages,
+      html: envelope.html || null,
+      title: actualTitle,
+      metadata: outEnvelope.metadata,
+      actions: outEnvelope.actions,
     };
 
     const responseJson = JSON.stringify(responseObj);

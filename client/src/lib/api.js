@@ -153,14 +153,35 @@ export async function submitPrompt(payloadOrPrompt) {
       throw { type: "server", code, message, fields };
     }
 
-    // Expect canonical envelope only
-    const envelope = json?.out_envelope;
+    // Try canonical envelope first, fall back to legacy format
+    let envelope = json?.out_envelope;
+
+    // Backwards compatibility: support legacy response format with chapters field
+    if (!envelope && json?.chapters) {
+      Logger.warn(
+        "Using legacy response format (chapters instead of out_envelope)",
+        {
+          hasChapters: !!json.chapters,
+          chaptersLength: Array.isArray(json.chapters)
+            ? json.chapters.length
+            : "invalid",
+        }
+      );
+      envelope = {
+        pages: json.chapters,
+        html: json.html,
+        metadata: json.metadata || {},
+        actions: json.actions || {},
+      };
+    }
+
     if (!envelope || !Array.isArray(envelope.pages)) {
-      Logger.error("Invalid server response shape", { envelope });
+      Logger.error("Invalid server response shape", { envelope, json });
       throw {
         type: "server",
         code: "INVALID_RESPONSE",
-        message: "Server response missing canonical out_envelope.pages",
+        message:
+          "Server response missing pages array (canonical out_envelope or legacy chapters)",
       };
     }
 

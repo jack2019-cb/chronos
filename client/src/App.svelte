@@ -168,14 +168,19 @@
                 class="export-btn"
                 on:click={async () => {
                   try {
-                    // Export expects: { pages, metadata, actions }
-                    // Transform backend response to export format
-                    const exportPayload = {
+                    // Use canonical out_envelope if available, fallback to legacy format
+                    const exportPayload = ebookResult.out_envelope || {
                       pages: ebookResult.chapters || [],
                       html: ebookResult.html || null,
                       metadata: ebookResult.metadata || {},
                       actions: ebookResult.actions || {},
                     };
+
+                    // Validate we have a valid pages array before exporting
+                    if (!Array.isArray(exportPayload.pages) || exportPayload.pages.length === 0) {
+                      throw new Error("Cannot export: missing or empty pages array. Ensure ebook generation completed successfully.");
+                    }
+
                     // Use the export function from api
                     const { exportToPdf } = await import('./lib/api.js');
                     await exportToPdf(exportPayload);
