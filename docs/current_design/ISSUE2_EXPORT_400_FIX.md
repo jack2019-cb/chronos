@@ -5,9 +5,10 @@
 **Directory**: `docs/current_design/`
 
 **Issue**: Export endpoint returns 400 when called post-async generation  
-**Status**: Decision Phase (Option Analysis Complete)  
+**Status**: Implementation Planning (Option A Selected - Clean Break)  
 **Visualization**: [ISSUE2_EXPORT_400_VISUALIZATION.md](ISSUE2_EXPORT_400_VISUALIZATION.md) - Complete export flow diagram  
-**Implementation**: [ISSUE2_EXPORT_400_IMPLEMENTATION.md](ISSUE2_EXPORT_400_IMPLEMENTATION.md) - Code changes to execute
+**Implementation**: [ISSUE2_EXPORT_400_IMPLEMENTATION.md](ISSUE2_EXPORT_400_IMPLEMENTATION.md) - Code changes (UPDATED for Option A)  
+**Approach**: [ISSUE2_EXPORT_400_APPROACH.md](ISSUE2_EXPORT_400_APPROACH.md) - Decision rationale
 
 ---
 
@@ -15,9 +16,15 @@
 
 The export mechanism was working in the synchronous `feat/ebook-revert` branch but fails in the async `feat/B_Frontend_option2` architecture. The root cause is a **data format mismatch** between the `/api/ebook/generate` response and what the `/export` endpoint expects.
 
-**Decision**: Implement **Option 1** - Normalize response format at the source to use canonical envelope structure.
+**Decision**: Implement **Option 1 (Option A: Clean Break)** - Normalize response format at the source to use canonical envelope structure **without backwards compatibility support**.
 
-**Rationale**: Most robust, eliminates semantic gap at origin, prevents cascading issues downstream.
+**Rationale**:
+
+- Clean, maintainable code path
+- Single format expected throughout architecture
+- No fallback logic reduces cognitive load
+- No legacy field duplication
+- Branch is not yet shipped to production, so no compatibility debt to carry
 
 ---
 
