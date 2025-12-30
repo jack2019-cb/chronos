@@ -5,7 +5,9 @@
 **Directory**: `docs/current_design/`
 
 **Issue**: Export endpoint returns 400 when called post-async generation  
-**Status**: Decision Phase (Option Analysis Complete)
+**Status**: Decision Phase (Option Analysis Complete)  
+**Visualization**: [ISSUE2_EXPORT_400_VISUALIZATION.md](ISSUE2_EXPORT_400_VISUALIZATION.md) - Complete export flow diagram  
+**Implementation**: [ISSUE2_EXPORT_400_IMPLEMENTATION.md](ISSUE2_EXPORT_400_IMPLEMENTATION.md) - Code changes to execute
 
 ---
 

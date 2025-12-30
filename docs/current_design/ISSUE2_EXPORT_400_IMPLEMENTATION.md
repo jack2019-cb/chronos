@@ -6,6 +6,7 @@
 
 **Implementation Branch**: `feat/export-400-fix` (to be created)  
 **Decision**: [ISSUE2_EXPORT_400_FIX.md](ISSUE2_EXPORT_400_FIX.md) - Option 1 selected  
+**Visualization**: [ISSUE2_EXPORT_400_VISUALIZATION.md](ISSUE2_EXPORT_400_VISUALIZATION.md) - Export flow diagram  
 **Audience**: Backend & Frontend developers
 
 ---
